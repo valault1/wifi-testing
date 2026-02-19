@@ -24,11 +24,6 @@ TOOLS = {
 # HELPER & ADMIN FUNCTIONS
 # ==========================================
 
-def check_root():
-    """Check if the script is running as root and exit if not."""
-    if os.geteuid() != 0:
-        print("❌ This operation requires root privileges. Please run with sudo.", file=sys.stderr)
-        sys.exit(1)
 
 def run_command(command):
     """Runs a system command and returns output."""
@@ -47,50 +42,42 @@ def run_command(command):
         return None
 
 def get_wifi_details():
-    """Detects active interface and connection profile using nmcli."""
-    check_root()
+    """Detects active Wi-Fi interface and network name (SSID) without sudo."""
     interface = None
     conn_name = None
-
-    out = run_command(["nmcli", "-t", "-f", "DEVICE,TYPE", "device"])
-    if out:
-        for line in out.split('\n'):
-            if ":wifi" in line:
-                interface = line.split(':')[0]
-                break
     
+    # Find a wireless interface in /sys/class/net
+    for dev in os.listdir('/sys/class/net'):
+        if os.path.exists(f'/sys/class/net/{dev}/wireless'):
+            interface = dev
+            break
+            
     if not interface:
         raise RuntimeError("No Wi-Fi interface found.")
 
-    out = run_command(["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"])
+    # Get network name (SSID) using 'iw'
+    out = run_command(["iw", "dev", interface, "link"])
     if out:
-        for line in out.split('\n'):
-            if f":{interface}" in line:
-                conn_name = line.split(':')[0]
-                break
+        m = re.search(r"SSID:\s+(.+)", out)
+        if m:
+            conn_name = m.group(1)
 
     if not conn_name:
-        raise RuntimeError(f"No active connection on {interface}.")
+        raise RuntimeError(f"Could not determine network SSID for {interface}.")
 
     return interface, conn_name
 
 def switch_band(conn_name, band_code):
-    """Switches Wi-Fi band using nmcli."""
-    check_root()
-    print(f"📡 Switching to band '{band_code}'...")
-    run_command(["nmcli", "connection", "modify", conn_name, "wifi.band", band_code])
-    run_command(["nmcli", "connection", "up", conn_name])
-    print("⏳ Waiting 5s for driver stabilization...")
-    time.sleep(5)
+    """(Not possible without sudo) This function is a placeholder."""
+    print(f"SKIPPING band switch for '{band_code}' (requires sudo).")
+    # This functionality is not possible without modifying network configurations,
+    # which requires elevated privileges.
+    pass
 
 def cleanup(conn_name):
-    """Restores Wi-Fi settings on exit."""
-    check_root()
-    print("\n🔄 Restoring Wi-Fi settings...")
-    # Reset to auto
-    run_command(["nmcli", "connection", "modify", conn_name, "wifi.band", ""])
-    run_command(["nmcli", "connection", "up", conn_name])
-    print("✓ Done.")
+    """(Not possible without sudo) This function is a placeholder."""
+    print("SKIPPING Wi-Fi cleanup (requires sudo).")
+    pass
 
 def wait_for_connection(host="www.google.com", port=80):
     """

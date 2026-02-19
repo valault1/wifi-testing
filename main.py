@@ -1,4 +1,4 @@
-# This script must be run with sudo, e.g., `sudo python3 main.py`
+import os
 import sys
 import shutil
 import datetime
@@ -16,90 +16,70 @@ from wifi_utils import (
 
 def main():
     """Main function to run the Wi-Fi speed test."""
-    print("==========================================")
-    print("   Wi-Fi Speedtest Automation (Python)    ")
-    print("==========================================")
+    print("==========================================", flush=True)
+    print("   Wi-Fi Speedtest Automation (Python)    ", flush=True)
+    print("==========================================", flush=True)
     
     try:
         interface, conn_name = get_wifi_details()
-        print(f"✅ Detected: {interface} | Profile: {conn_name}")
+        print(f"✅ Detected: {interface} | Profile: {conn_name}", flush=True)
     except RuntimeError as e:
-        print(f"❌ Error: {e}", file=sys.stderr)
+        print(f"❌ Error: {e}", file=sys.stderr, flush=True)
         sys.exit(1)
 
-    # --- Menu ---
-    print("\nSelect Tool:")
-    for key, val in TOOLS.items():
-        print(f"{key}. {val['name']}")
-    
-    choice = input("\nEnter choice (1-5): ")
-    if choice not in TOOLS:
-        print("Invalid choice.", file=sys.stderr)
-        sys.exit(1)
-        
+    # --- Use the first available tool by default ---
+    choice = "2"
     chosen_tool_info = TOOLS[choice]
-    
+    print(f"\nSelected tool: {chosen_tool_info['name']}", flush=True)
+
     if not shutil.which(chosen_tool_info["cmd"]):
-        print(f"❌ Error: {chosen_tool_info['cmd']} not found in PATH. Please install it.", file=sys.stderr)
+        print(f"❌ Error: {chosen_tool_info['cmd']} not found in PATH. Please install it.", file=sys.stderr, flush=True)
         sys.exit(1)
         
     iperf_server = None
     if chosen_tool_info["type"] == "iperf":
-        iperf_server = input("Enter iPerf3 Server IP: ")
+        # In a non-interactive script, you might get this from an env var or config file
+        iperf_server = os.environ.get("IPERF_SERVER")
         if not iperf_server:
+            print("❌ Error: iPerf server IP not specified. Set IPERF_SERVER environment variable.", file=sys.stderr, flush=True)
             sys.exit(1)
 
-    # --- Run Tests ---
-    results = []
-    tests = [
-        ("bg", "2.4 GHz"), # 802.11b/g
-        ("a", "5 GHz"),   # 802.11a
-        ("6g", "6 GHz")
-    ]
-    
+    # --- Run Single Test ---
     try:
-        for band_code, label in tests:
-            print(f"\n--- Testing {label} ---")
-            switch_band(conn_name, band_code)
+        if wait_for_connection():
+            freq, width = get_freq_width(interface)
+            print(f"Connected on {conn_name}: {freq} MHz (Width: {width})", file=sys.stderr, flush=True)
             
-            if wait_for_connection():
-                freq, width = get_freq_width(interface)
-                print(f"Connected on {label}: {freq} MHz (Width: {width})", file=sys.stderr)
+            speed = run_speedtest_tool(choice, interface, iperf_server)
+            print(f"⬇️  Result: {speed} Mbps", flush=True)
+            
+            # --- Report ---
+            if speed > 0.0:
+                now = datetime.datetime.now()
+                report_dir = "reports"
+                os.makedirs(report_dir, exist_ok=True)
+                report_filename = os.path.join(report_dir, f"wifi_speedtest_report_{now.strftime('%Y-%m-%d_%H-%M-%S')}.txt")
                 
-                speed = run_speedtest_tool(choice, interface, iperf_server)
-                print(f"⬇️  Result: {speed} Mbps")
-                
-                results.append({"band": label, "freq": freq, "speed": speed})
+                with open(report_filename, "w") as f:
+                    f.write("Wi-Fi Speed Report\n")
+                    f.write(f"Date: {now.strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write(f"Tool: {chosen_tool_info['name']}\n")
+                    f.write("-" * 40 + "\n")
+                    f.write(f"SSID: {conn_name}\n")
+                    f.write(f"Interface: {interface}\n")
+                    f.write(f"Frequency: {freq} MHz\n")
+                    f.write(f"Speed: {speed:.2f} Mbps\n")
+                print(f"✓ Report saved to {report_filename}", flush=True)
             else:
-                print(f"❌ Could not connect to the internet on {label}.")
-                results.append({"band": label, "freq": "N/A", "speed": 0.0})
+                print("❌ Speedtest returned 0.0 Mbps. No report generated.", flush=True)
+
+        else:
+            print(f"❌ Could not connect to the internet.", flush=True)
 
     except KeyboardInterrupt:
-        print("\nAborted by user.")
+        print("\nAborted by user.", flush=True)
     finally:
         cleanup(conn_name)
-
-    # --- Report ---
-    if results:
-        print(f"\n📄 Generating Report...")
-        
-        # Sort by speed to find the best result
-        best_result = max(results, key=lambda x: x['speed'])
-        
-        report_file = "wifi_speedtest_report.txt"
-        with open(report_file, "w") as f:
-            f.write("Wi-Fi Speed Report\n")
-            f.write(f"Date: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Tool: {chosen_tool_info['name']}\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"🏆 Fastest: {best_result['band']} ({best_result['speed']} Mbps)\n")
-            f.write("-" * 40 + "\n")
-            f.write(f"{'Band':<10} | {'Freq (MHz)':<10} | {'Speed (Mbps)':<15}\n")
-            f.write("-" * 40 + "\n")
-            for r in results:
-                f.write(f"{r['band']:<10} | {r['freq']:<10} | {r['speed']:<15.2f}\n")
-        
-        print(f"✓ Report saved to {report_file}")
 
 if __name__ == "__main__":
     main()

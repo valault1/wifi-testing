@@ -1,0 +1,3 @@
+# Ignore wifi speedtest reports
+/reports/
+/.venv/
