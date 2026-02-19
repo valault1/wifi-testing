@@ -54,8 +54,7 @@ def get_wifi_details():
 
     out = run_command(["nmcli", "-t", "-f", "DEVICE,TYPE", "device"])
     if out:
-        for line in out.split('
-'):
+        for line in out.split('\n'):
             if ":wifi" in line:
                 interface = line.split(':')[0]
                 break
@@ -65,8 +64,7 @@ def get_wifi_details():
 
     out = run_command(["nmcli", "-t", "-f", "NAME,DEVICE", "connection", "show", "--active"])
     if out:
-        for line in out.split('
-'):
+        for line in out.split('\n'):
             if f":{interface}" in line:
                 conn_name = line.split(':')[0]
                 break
@@ -88,8 +86,7 @@ def switch_band(conn_name, band_code):
 def cleanup(conn_name):
     """Restores Wi-Fi settings on exit."""
     check_root()
-    print("
-🔄 Restoring Wi-Fi settings...")
+    print("\n🔄 Restoring Wi-Fi settings...")
     # Reset to auto
     run_command(["nmcli", "connection", "modify", conn_name, "wifi.band", ""])
     run_command(["nmcli", "connection", "up", conn_name])
@@ -111,8 +108,7 @@ def wait_for_connection(host="www.google.com", port=80):
         except Exception:
             time.sleep(1)
             print(".", end="", flush=True, file=sys.stderr)
-    print("
-❌ Timed out waiting for internet.", file=sys.stderr)
+    print("\n❌ Timed out waiting for internet.", file=sys.stderr)
     return False
 
 
