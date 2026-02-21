@@ -1,12 +1,39 @@
 import os
 import sys
+import subprocess
+
+# --- 1. NEW ENVIRONMENT BOOTSTRAP ---
+VENV_DIR = "venv"
+VENV_PYTHON = os.path.join(VENV_DIR, "bin", "python")
+
+def bootstrap_env():
+    """Ensure we are running inside the virtual environment."""
+    # Check if the current Python interpreter is the one inside our venv
+    if not sys.executable.endswith(VENV_PYTHON):
+        print("🔄 Not running in venv. Bootstrapping environment...", flush=True)
+        
+        # Call our new setup.py script
+        subprocess.run([sys.executable, "setup.py"], check=True)
+        
+        # Re-launch THIS script using the virtual environment's Python.
+        # os.execv completely replaces the current running process with the new one.
+        args = [VENV_PYTHON] + sys.argv
+        os.execv(VENV_PYTHON, args)
+
+# Run the bootstrap immediately
+bootstrap_env()
+# ------------------------------------
+
+# --- 2. STANDARD IMPORTS ---
 import shutil
 import datetime
 import csv
 import socket
 import argparse
 
-# Import the consolidated functions and configuration
+# --- 3. CUSTOM IMPORTS ---
+# These are now safe to import because if they rely on 3rd party tools,
+# the bootstrap_env() function has already ensured the venv is active.
 from wifi_info import get_wifi_details, get_freq_width, cleanup
 from connection_tester import wait_for_connection
 from speedtest_runner import run_speedtest_tool, TOOLS

@@ -26,8 +26,7 @@ REMOTE_SCRIPT = "src/wifi_test_scripts/main.py"
 REMOTE_CSV = "reports/speed-test-results.csv"
 
 # Local file where all results will be appended
-# Assuming the script is run from the project root or src dir, we build absolute path
-LOCAL_CSV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "reports", "orchestrated-speed-test-results.csv"))
+LOCAL_CSV_PATH = "reports/orchestrated-speed-test-results.csv"
 
 def run_remote_speedtest(host, tool):
     print(f"\n--- Testing {host} ---")
