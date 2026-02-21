@@ -17,11 +17,11 @@ HOSTS = [
     "val-server-3.local", # Replace with actual hostnames or IP addresses
 ]
 
-USERNAME = "val" # Change if needed on target laptops
-PASSWORD = "your_password_here" # Hard-coded password for now
+USERNAME = "wifi" # Change if needed on target laptops
+PASSWORD = "wifi-testing" # Hard-coded password for now
 
 # Paths on the remote machine
-REMOTE_DIR = "~/wifi_testing"
+REMOTE_DIR = "~/wifi-testing"
 REMOTE_SCRIPT = "src/wifi_test_scripts/main.py"
 REMOTE_CSV = "reports/speed-test-results.csv"
 

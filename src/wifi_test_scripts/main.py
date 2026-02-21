@@ -13,7 +13,7 @@ def bootstrap_env():
         print("🔄 Not running in venv. Bootstrapping environment...", flush=True)
         
         # Call our new setup.py script
-        subprocess.run([sys.executable, "setup.py"], check=True)
+        subprocess.run([sys.executable, "src/wifi_test_scripts/setup.py"], check=True)
         
         # Re-launch THIS script using the virtual environment's Python.
         # os.execv completely replaces the current running process with the new one.
