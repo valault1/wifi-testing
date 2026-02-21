@@ -39,8 +39,8 @@ def run_remote_speedtest(host, tool):
         
         print(f"[{host}] Running speed test... (this may take a minute)")
         
-        # Run the script with the specified tool
-        command = f"cd {REMOTE_DIR} && python3 {REMOTE_SCRIPT} --tool {tool}"
+        # Run the script with the specified tool, ensuring sbin directories are in PATH
+        command = f"cd {REMOTE_DIR} && PATH=$PATH:/usr/sbin:/sbin:/usr/local/sbin python3 {REMOTE_SCRIPT} --tool {tool}"
         stdin, stdout, stderr = ssh.exec_command(command)
         
         # Wait for the command to finish and get exit status
