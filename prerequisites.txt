@@ -1,0 +1,7 @@
+Remote setup - linux server
+
+# install iw - used to get network interface info 
+sudo apt install iw
+
+# install speedtest-cli - used for ookla speedtests
+sudo apt install speedtest-cli

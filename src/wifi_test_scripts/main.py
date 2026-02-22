@@ -141,7 +141,8 @@ def main():
             if speed > 0.0:
                 save_report(speed, conn_name, interface, freq, width, chosen_tool_info['name'])
             else:
-                print("❌ Speedtest returned 0.0 Mbps. No report generated.", flush=True)
+                print("❌ Speedtest returned 0.0 Mbps. No report generated.", file=sys.stderr, flush=True)
+                sys.exit(1)
         else:
             print(f"❌ Could not connect to the internet.", flush=True)
 

@@ -1,3 +1,4 @@
 # Ignore wifi speedtest reports
-/reports/
-/.venv/
+reports/
+venv/
+.venv

@@ -45,7 +45,14 @@ def run_remote_speedtest(host, tool):
         
         # Wait for the command to finish and get exit status
         exit_status = stdout.channel.recv_exit_status()
+        remote_output = stdout.read().decode('utf-8').strip()
+        remote_err = stderr.read().decode('utf-8').strip()
         
+        if remote_output:
+            print(f"[{host}] Remote script output:\n{remote_output}")
+        if remote_err:
+            print(f"[{host}] Remote script errors:\n{remote_err}")
+            
         if exit_status == 0:
             print(f"[{host}] Speed test completed successfully.")
             

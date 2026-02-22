@@ -33,7 +33,10 @@ def run_speedtest_tool(tool_choice, interface, iperf_server=None):
                 data = json.loads(proc.stdout)
                 result = (data["download"]["bandwidth"] * 8) / 1_000_000
             except:
+                print(f"[DEBUG] json output failed. proc.stderr:\n{proc.stderr}", file=sys.stderr)
                 proc_simple = subprocess.run([cmd_base, "--simple"], capture_output=True, text=True)
+                print(f"[DEBUG] simple output stdout:\n{proc_simple.stdout}", file=sys.stderr)
+                print(f"[DEBUG] simple output stderr:\n{proc_simple.stderr}", file=sys.stderr)
                 m = re.search(r"Download:\s+([\d.]+)", proc_simple.stdout)
                 if m: result = float(m.group(1))
 
