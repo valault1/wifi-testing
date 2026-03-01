@@ -153,6 +153,31 @@ section[id] {
   box-shadow: var(--shadow-glow);
 }
 
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-glow::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: rotate(45deg);
+  transition: all 0.3s;
+  opacity: 0;
+}
+
+.btn-glow:hover::after {
+  opacity: 1;
+  left: 100%;
+  top: 100%;
+  transition: all 0.7s;
+}
+
 .btn-secondary {
   background: white;
   color: var(--text-main);
@@ -476,34 +501,7 @@ section[id] {
   font-size: 0.875rem;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.delay-100 {
-  animation-delay: 100ms;
-}
-
-.delay-200 {
-  animation-delay: 200ms;
-}
-
-.delay-300 {
-  animation-delay: 300ms;
-}
 
 /* Responsive */
 @media (max-width: 768px) {
