@@ -19,6 +19,7 @@ HOSTS = [
 
 USERNAME = "wifi" # Change if needed on target laptops
 PASSWORD = "wifi-testing" # Hard-coded password for now
+# used "val-test" for the chromebook
 
 # Paths on the remote machine
 REMOTE_DIR = "~/wifi-testing"

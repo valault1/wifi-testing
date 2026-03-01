@@ -16,21 +16,32 @@ nodes_lock = threading.Lock()
 
 def on_service_state_change(zeroconf, service_type, name, state_change):
     """Callback for when a zeroconf service is added, removed, or updated."""
-    with nodes_lock:
-        if state_change is ServiceStateChange.Added:
-            info = zeroconf.get_service_info(service_type, name)
-            if info:
-                # Convert IP address nicely
-                ip_addr = ".".join(map(str, info.addresses[0])) if info.addresses else None
-                if ip_addr:
+    if state_change is ServiceStateChange.Added:
+        info = zeroconf.get_service_info(service_type, name)
+        if info:
+            import socket
+            if info.addresses:
+                addr_bytes = info.addresses[0]
+                if len(addr_bytes) == 4:
+                    ip_addr = socket.inet_ntoa(addr_bytes)
+                elif len(addr_bytes) == 16:
+                    ip_addr = socket.inet_ntop(socket.AF_INET6, addr_bytes)
+                else:
+                    ip_addr = None
+            else:
+                ip_addr = None
+                
+            if ip_addr:
+                with nodes_lock:
                     discovered_nodes[name] = {
                         "ip": ip_addr,
                         "port": info.port,
                         "status": "discovered"
                     }
-                    print(f"Discovered new node: {name} at {ip_addr}:{info.port}")
+                print(f"Discovered new node: {name} at {ip_addr}:{info.port}")
         
-        elif state_change is ServiceStateChange.Removed:
+    elif state_change is ServiceStateChange.Removed:
+        with nodes_lock:
             if name in discovered_nodes:
                 del discovered_nodes[name]
                 print(f"Node removed: {name}")
