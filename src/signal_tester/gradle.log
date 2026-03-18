@@ -1,0 +1,14 @@
+Downloading https://services.gradle.org/distributions/gradle-9.0.0-bin.zip
+............10%.............20%.............30%.............40%.............50%............60%.............70%.............80%.............90%.............100%
+
+Welcome to Gradle 9.0.0!
+
+Here are the highlights of this release:
+ - Configuration Cache is the recommended execution mode
+ - Gradle requires JVM 17 or higher to run
+ - Build scripts use Kotlin 2.2 and Groovy 4.0
+ - Improved Kotlin DSL script compilation avoidance
+
+For more details see https://docs.gradle.org/9.0.0/release-notes.html
+
+Starting a Gradle Daemon (subsequent builds will be faster)

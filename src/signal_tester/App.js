@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import WifiManager from 'react-native-wifi-reborn';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 export default function App() {
   const [rooms, setRooms] = useState(['Living Room', 'Garage']);
@@ -28,6 +30,60 @@ export default function App() {
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission Denied', 'Location permission is required to read WiFi signal strength on Android.');
+    }
+  };
+
+  const generateAndSavePDF = async () => {
+    try {
+      const htmlContent = `
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
+            <style>
+              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
+              h1 { color: #007BFF; text-align: center; }
+              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+              th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+              th { background-color: #f8f9fa; font-weight: bold; }
+              .bands { font-size: 12px; }
+            </style>
+          </head>
+          <body>
+            <h1>Signal Tester Results</h1>
+            <table>
+              <tr>
+                <th>Time</th>
+                <th>Room</th>
+                <th>Type</th>
+                <th>Result</th>
+              </tr>
+              ${history.map(item => `
+                <tr>
+                  <td>${item.timestamp}</td>
+                  <td>${item.room}</td>
+                  <td>${item.type}</td>
+                  <td>
+                    ${item.type === 'Speedtest'
+          ? item.speed
+          : `<div class="bands">
+                           2.4GHz: ${item.bands['2.4GHz'] || 'N/A'}<br>
+                           5GHz: ${item.bands['5GHz'] || 'N/A'}<br>
+                           6GHz: ${item.bands['6GHz'] || 'N/A'}
+                         </div>`
+        }
+                  </td>
+                </tr>
+              `).join('')}
+            </table>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+    } catch (err) {
+      console.warn(err);
+      Alert.alert('Error', 'Failed to generate or share PDF.');
     }
   };
 
@@ -174,7 +230,16 @@ export default function App() {
     <View style={styles.container}>
       {/* Top Half - History */}
       <View style={styles.topHalf}>
-        <Text style={styles.headerTitle}>History Log</Text>
+        <View style={styles.historyHeaderContainer}>
+          <Text style={styles.headerTitle}>History Log</Text>
+          <TouchableOpacity
+            onPress={generateAndSavePDF}
+            style={[styles.savePdfButton, history.length === 0 && styles.savePdfButtonDisabled]}
+            disabled={history.length === 0}
+          >
+            <Text style={styles.savePdfText}>Save PDF</Text>
+          </TouchableOpacity>
+        </View>
         {history.length === 0 ? (
           <Text style={styles.emptyText}>No data points yet. Select a room and run a test.</Text>
         ) : (
@@ -265,8 +330,29 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 0,
     color: '#333',
+  },
+  historyHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 5,
+  },
+  savePdfButton: {
+    backgroundColor: '#17A2B8',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  savePdfButtonDisabled: {
+    backgroundColor: '#A0A0A0',
+  },
+  savePdfText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
   emptyText: {
     color: '#777',
