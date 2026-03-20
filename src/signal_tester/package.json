@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:pdf": "node test-pdf.js"
   },
   "dependencies": {
     "expo": "~55.0.4",
@@ -20,5 +21,8 @@
     "react-native": "0.83.2",
     "react-native-wifi-reborn": "^4.13.6"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "puppeteer": "^24.40.0"
+  }
 }

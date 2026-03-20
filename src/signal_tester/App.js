@@ -14,6 +14,7 @@ import * as Location from 'expo-location';
 import WifiManager from 'react-native-wifi-reborn';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { generatePdfHtml } from './src/pdfGenerator';
 
 export default function App() {
   const [rooms, setRooms] = useState(['Living Room', 'Garage']);
@@ -35,49 +36,7 @@ export default function App() {
 
   const generateAndSavePDF = async () => {
     try {
-      const htmlContent = `
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no" />
-            <style>
-              body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #333; }
-              h1 { color: #007BFF; text-align: center; }
-              table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-              th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
-              th { background-color: #f8f9fa; font-weight: bold; }
-              .bands { font-size: 12px; }
-            </style>
-          </head>
-          <body>
-            <h1>Signal Tester Results</h1>
-            <table>
-              <tr>
-                <th>Time</th>
-                <th>Room</th>
-                <th>Type</th>
-                <th>Result</th>
-              </tr>
-              ${history.map(item => `
-                <tr>
-                  <td>${item.timestamp}</td>
-                  <td>${item.room}</td>
-                  <td>${item.type}</td>
-                  <td>
-                    ${item.type === 'Speedtest'
-          ? item.speed
-          : `<div class="bands">
-                           2.4GHz: ${item.bands['2.4GHz'] || 'N/A'}<br>
-                           5GHz: ${item.bands['5GHz'] || 'N/A'}<br>
-                           6GHz: ${item.bands['6GHz'] || 'N/A'}
-                         </div>`
-        }
-                  </td>
-                </tr>
-              `).join('')}
-            </table>
-          </body>
-        </html>
-      `;
+      const htmlContent = generatePdfHtml(history);
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
       await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
