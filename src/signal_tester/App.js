@@ -15,6 +15,57 @@ import WifiManager from 'react-native-wifi-reborn';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { generatePdfHtml } from './src/pdfGenerator';
+import { WebView } from 'react-native-webview';
+
+const cloudflareHtmlString = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+  <script type="module">
+    import SpeedTest from 'https://unpkg.com/@cloudflare/speedtest/dist/speedtest.js';
+    
+    try {
+      const engine = new SpeedTest({
+        autoStart: true,
+        measurements: [
+          { type: 'latency', numPackets: 20 },
+          { type: 'download', bytes: 1e5, count: 5 },
+          { type: 'download', bytes: 1e6, count: 5 },
+          { type: 'download', bytes: 1e7, count: 2 },
+          { type: 'upload', bytes: 1e5, count: 2 },
+          { type: 'upload', bytes: 1e6, count: 2 }
+        ]
+      });
+
+      engine.onFinish = (results) => {
+        const summary = results.getSummary();
+        window.ReactNativeWebView.postMessage(JSON.stringify({ 
+          status: 'FINISHED', 
+          download: summary.download,
+          upload: summary.upload,
+          latency: summary.latency
+        }));
+      };
+
+      engine.onError = (err) => {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ 
+          status: 'ERROR', 
+          error: err.toString() 
+        }));
+      };
+    } catch (e) {
+       window.ReactNativeWebView.postMessage(JSON.stringify({ 
+          status: 'ERROR', 
+          error: e.toString() 
+       }));
+    }
+  </script>
+</body>
+</html>
+`;
 
 export default function App() {
   const [rooms, setRooms] = useState(['Living Room', 'Garage']);
@@ -22,6 +73,7 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
+  const [webViewTesting, setWebViewTesting] = useState(false);
 
   useEffect(() => {
     requestPermissions();
@@ -60,32 +112,7 @@ export default function App() {
     }
 
     setLoading(true);
-    const testUrl = 'https://speed.cloudflare.com/__down?bytes=5000000'; // 5MB payload
-    const payloadSizeBits = 5000000 * 8;
-
-    let speedMbps = 0;
-    const startTime = Date.now();
-    try {
-      const response = await fetch(testUrl, { method: 'GET', cache: 'no-cache' });
-      await response.arrayBuffer(); // Wait until completely downloaded
-      const endTime = Date.now();
-
-      const durationSeconds = (endTime - startTime) / 1000;
-      speedMbps = (payloadSizeBits / durationSeconds) / 1000000;
-    } catch (error) {
-      console.warn("Speedtest failed", error);
-    }
-
-    const newEntry = {
-      id: Date.now().toString(),
-      room: activeRoom,
-      type: 'Speedtest',
-      speed: speedMbps > 0 ? `${speedMbps.toFixed(2)} Mbps` : 'Failed',
-      timestamp: new Date().toLocaleTimeString(),
-    };
-
-    setHistory((prev) => [newEntry, ...prev]);
-    setLoading(false);
+    setWebViewTesting(true);
   };
 
   const executeSignalScan = async () => {
@@ -234,6 +261,35 @@ export default function App() {
             <Text style={styles.actionBtnText}>Speedtest</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }}>
+        {webViewTesting && (
+          <WebView
+            source={{ html: cloudflareHtmlString }}
+            originWhitelist={['*']}
+            onMessage={(event) => {
+              const data = JSON.parse(event.nativeEvent.data);
+              setWebViewTesting(false);
+              setLoading(false);
+              
+              if (data.status === 'FINISHED') {
+                const speedMbps = data.download ? (data.download / 1000000) : 0;
+                const newEntry = {
+                  id: Date.now().toString(),
+                  room: activeRoom,
+                  type: 'Speedtest',
+                  speed: speedMbps > 0 ? `${speedMbps.toFixed(2)} Mbps` : 'Failed',
+                  timestamp: new Date().toLocaleTimeString(),
+                };
+                setHistory((prev) => [newEntry, ...prev]);
+              } else {
+                console.warn("Speedtest failed from webview", data.error);
+                Alert.alert("Test Failed", "Failed to run speed test.");
+              }
+            }}
+          />
+        )}
       </View>
 
       {/* Bottom Half - Rooms */}
