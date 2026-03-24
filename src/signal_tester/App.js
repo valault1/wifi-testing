@@ -25,7 +25,7 @@ const cloudflareHtmlString = `
 </head>
 <body>
   <script type="module">
-    import SpeedTest from 'https://unpkg.com/@cloudflare/speedtest/dist/speedtest.js';
+    import SpeedTest from 'https://esm.sh/@cloudflare/speedtest';
     
     try {
       const engine = new SpeedTest({
