@@ -1,4 +1,4 @@
 {
-    "version": "1.0.1",
-    "notes": "Enabled high-accuracy Link Speed and native fetch speedtest."
+    "version": "1.0.2",
+    "notes": "Added foreground update checks and manual 'Check for Updates' button."
 }

@@ -8,7 +8,8 @@ import {
   FlatList,
   ActivityIndicator,
   Platform,
-  Alert
+  Alert,
+  AppState
 } from 'react-native';
 import * as Location from 'expo-location';
 import WifiManager from 'react-native-wifi-reborn';
@@ -27,36 +28,56 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
-  const [serverIp, setServerIp] = useState('localhost'); // 'localhost' works for updates via cable, but needs Mac IP for WiFi test
-  const [testMode, setTestMode] = useState('WAN'); // 'WAN' or 'LAN'
+  const [serverIp, setServerIp] = useState('localhost');
+  const [testMode, setTestMode] = useState('WAN');
+  const [updateStatus, setUpdateStatus] = useState('Checking...');
+
+  const currentVersion = '1.0.2';
 
   useEffect(() => {
     requestPermissions();
     checkForUpdates();
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        checkForUpdates();
+      }
+    });
+
+    return () => subscription.remove();
   }, []);
 
-  const checkForUpdates = async () => {
-    try {
-      // Use localhost because adb reverse maps to Mac
-      const updateUrl = 'http://localhost:8080/version.json';
-      // ... (rest of function unchanged, just showing context for replace_file_content)
-      const response = await fetch(updateUrl, { signal: AbortSignal.timeout(3000) });
-      const data = await response.json();
+  const checkForUpdates = async (isManual = false) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
 
-      const currentVersion = '1.0.0'; // Should match app.json
+    try {
+      const updateUrl = 'http://localhost:8080/version.json';
+      const response = await fetch(updateUrl, { signal: controller.signal });
+      const data = await response.json();
+      clearTimeout(timeoutId);
+
       if (data.version !== currentVersion) {
+        setUpdateStatus(`v${data.version} Available`);
         Alert.alert(
           'Update Available',
-          `New version ${data.version} is available on your connected Mac.\nNotes: ${data.notes || 'No notes.'}`,
+          `Your version: ${currentVersion}\nNew version: ${data.version}\n\nNotes: ${data.notes || 'No notes.'}`,
           [
             { text: 'Later', style: 'cancel' },
             { text: 'Update Now', onPress: () => performUpdate() }
           ]
         );
+      } else {
+        setUpdateStatus('Up to Date');
+        if (isManual) {
+          Alert.alert('App Up to Date', `You are already running the latest version: ${currentVersion}`);
+        }
       }
     } catch (e) {
-      // Quietly fail if not connected or server not running
-      console.log('Update server not found or connected:', e.message);
+      setUpdateStatus('Server Offline');
+      if (isManual) {
+        Alert.alert('Check Failed', 'Could not reach the update server on your Mac. Ensure it is connected via USB and update_server.py is running.');
+      }
     }
   };
 
@@ -117,35 +138,18 @@ export default function App() {
 
     setLoading(true);
 
-    // Determine the test URL based on the mode
     const isWan = testMode === 'WAN';
-    // For WAN, we use a very large file to simulate streaming. For LAN, we use our infinite stream.
     const testUrl = isWan
-      ? 'https://speed.cloudflare.com/__down?bytes=500000000' // 500MB for WAN to prevent finishing early
+      ? 'https://speed.cloudflare.com/__down?bytes=500000000'
       : `http://${serverIp}:8080/test-data`;
 
-    try {
-      const response = await fetch(testUrl);
-      const reader = response.body.getReader();
-      let receivedBytes = 0;
-      const startTime = Date.now();
-      const testDurationMs = 5000; // Measure for exactly 5 seconds
+    const xhr = new XMLHttpRequest();
+    let loadedBytes = 0;
+    const startTime = Date.now();
+    const testDurationMs = 5000;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        receivedBytes += value.length;
-
-        // Stop the test after the duration
-        if (Date.now() - startTime >= testDurationMs) {
-          await reader.cancel(); // Stop the stream
-          break;
-        }
-      }
-
-      const endTime = Date.now();
-      const durationSec = (endTime - startTime) / 1000;
+    const finalizeTest = (receivedBytes, start, end) => {
+      const durationSec = (end - start) / 1000 || 1;
       const speedMbps = (receivedBytes * 8) / (durationSec * 1_000_000);
 
       const newEntry = {
@@ -157,15 +161,33 @@ export default function App() {
       };
 
       setHistory((prev) => [newEntry, ...prev]);
-    } catch (error) {
-      if (error.message !== 'Reader was cancelled') {
-        console.warn('Speedtest Error:', error);
-        const msg = isWan ? 'Internet test failed.' : `Could not reach local server at ${serverIp}.`;
-        Alert.alert('Test Failed', msg);
-      }
-    } finally {
       setLoading(false);
-    }
+    };
+
+    xhr.open('GET', testUrl, true);
+
+    xhr.onprogress = (event) => {
+      loadedBytes = event.loaded;
+    };
+
+    xhr.onload = () => {
+      finalizeTest(loadedBytes, startTime, Date.now());
+    };
+
+    xhr.onerror = (e) => {
+      setLoading(false);
+      Alert.alert('Test Failed', `Could not reach ${isWan ? 'Internet' : 'Local Server'}.\n\nCheck your connection and Mac IP.`);
+    };
+
+    xhr.send();
+
+    // Abort after 5 seconds to calculate intermediate speed
+    setTimeout(() => {
+      if (xhr.readyState !== 4) {
+        xhr.abort();
+        finalizeTest(loadedBytes, startTime, Date.now());
+      }
+    }, testDurationMs);
   };
 
   const executeSignalScan = async () => {
@@ -385,6 +407,13 @@ export default function App() {
             <Text style={styles.loadingText}>Running Test...</Text>
           </View>
         )}
+      </View>
+
+      <View style={styles.footer}>
+        <Text style={styles.footerText}>Version: {currentVersion} | Status: {updateStatus}</Text>
+        <TouchableOpacity style={styles.footerAction} onPress={() => checkForUpdates(true)}>
+          <Text style={styles.footerActionText}>Check for Updates</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -668,5 +697,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+  },
+  footer: {
+    padding: 10,
+    backgroundColor: '#F1F3F5',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: '#CCC',
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#6C757D',
+    fontWeight: '500',
+  },
+  footerAction: {
+    marginTop: 5,
+    backgroundColor: '#007BFF',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 4,
+  },
+  footerActionText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: 'bold',
   }
 });
