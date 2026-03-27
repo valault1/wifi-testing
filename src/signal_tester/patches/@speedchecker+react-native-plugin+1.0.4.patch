@@ -1,0 +1,12 @@
+diff --git a/node_modules/@speedchecker/react-native-plugin/android/build.gradle b/node_modules/@speedchecker/react-native-plugin/android/build.gradle
+index 7a525cd..1bd8372 100644
+--- a/node_modules/@speedchecker/react-native-plugin/android/build.gradle
++++ b/node_modules/@speedchecker/react-native-plugin/android/build.gradle
+@@ -23,7 +23,6 @@ android {
+ repositories {
+     google()
+     mavenCentral()
+-    jcenter()
+     maven {
+         url 'https://maven.speedcheckerapi.com/artifactory/libs-release'
+         credentials {

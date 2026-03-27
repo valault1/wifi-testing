@@ -7,10 +7,12 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test:pdf": "node test-pdf.js"
+    "test:pdf": "node test-pdf.js",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@cloudflare/speedtest": "^1.7.0",
+    "@speedchecker/react-native-plugin": "^1.0.4",
     "expo": "~55.0.4",
     "expo-build-properties": "~55.0.9",
     "expo-device": "~55.0.9",
