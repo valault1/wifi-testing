@@ -31,12 +31,13 @@ const cloudflareHtmlString = `
       const engine = new SpeedTest({
         autoStart: true,
         measurements: [
-          { type: 'latency', numPackets: 20 },
-          { type: 'download', bytes: 1e5, count: 5 },
-          { type: 'download', bytes: 1e6, count: 5 },
+          { type: 'latency', numPackets: 15 },
+          { type: 'download', bytes: 1e6, count: 2 },
           { type: 'download', bytes: 1e7, count: 2 },
-          { type: 'upload', bytes: 1e5, count: 2 },
-          { type: 'upload', bytes: 1e6, count: 2 }
+          { type: 'download', bytes: 2.5e7, count: 4 },
+          { type: 'upload', bytes: 1e6, count: 2 },
+          { type: 'upload', bytes: 1e7, count: 2 },
+          { type: 'upload', bytes: 2.5e7, count: 2 }
         ]
       });
 
@@ -272,7 +273,7 @@ export default function App() {
               const data = JSON.parse(event.nativeEvent.data);
               setWebViewTesting(false);
               setLoading(false);
-              
+
               if (data.status === 'FINISHED') {
                 const speedMbps = data.download ? (data.download / 1000000) : 0;
                 const newEntry = {
