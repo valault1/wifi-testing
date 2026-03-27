@@ -14,58 +14,12 @@ import * as Location from 'expo-location';
 import WifiManager from 'react-native-wifi-reborn';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { generatePdfHtml } from './src/pdfGenerator';
 import { WebView } from 'react-native-webview';
 
-const cloudflareHtmlString = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-  <script type="module">
-    import SpeedTest from 'https://esm.sh/@cloudflare/speedtest';
-    
-    try {
-      const engine = new SpeedTest({
-        autoStart: true,
-        measurements: [
-          { type: 'latency', numPackets: 20 },
-          { type: 'download', bytes: 1e5, count: 5 },
-          { type: 'download', bytes: 1e6, count: 5 },
-          { type: 'download', bytes: 1e7, count: 2 },
-          { type: 'upload', bytes: 1e5, count: 2 },
-          { type: 'upload', bytes: 1e6, count: 2 }
-        ]
-      });
-
-      engine.onFinish = (results) => {
-        const summary = results.getSummary();
-        window.ReactNativeWebView.postMessage(JSON.stringify({ 
-          status: 'FINISHED', 
-          download: summary.download,
-          upload: summary.upload,
-          latency: summary.latency
-        }));
-      };
-
-      engine.onError = (err) => {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ 
-          status: 'ERROR', 
-          error: err.toString() 
-        }));
-      };
-    } catch (e) {
-       window.ReactNativeWebView.postMessage(JSON.stringify({ 
-          status: 'ERROR', 
-          error: e.toString() 
-       }));
-    }
-  </script>
-</body>
-</html>
-`;
+const cloudflareHtmlString = ''; // Deprecated in favor of native fetch speedtest
 
 export default function App() {
   const [rooms, setRooms] = useState(['Living Room', 'Garage']);
@@ -73,11 +27,61 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
-  const [webViewTesting, setWebViewTesting] = useState(false);
+  const [serverIp, setServerIp] = useState('localhost'); // 'localhost' works for updates via cable, but needs Mac IP for WiFi test
+  const [testMode, setTestMode] = useState('WAN'); // 'WAN' or 'LAN'
 
   useEffect(() => {
     requestPermissions();
+    checkForUpdates();
   }, []);
+
+  const checkForUpdates = async () => {
+    try {
+      // Use localhost because adb reverse maps to Mac
+      const updateUrl = 'http://localhost:8080/version.json';
+      // ... (rest of function unchanged, just showing context for replace_file_content)
+      const response = await fetch(updateUrl, { signal: AbortSignal.timeout(3000) });
+      const data = await response.json();
+
+      const currentVersion = '1.0.0'; // Should match app.json
+      if (data.version !== currentVersion) {
+        Alert.alert(
+          'Update Available',
+          `New version ${data.version} is available on your connected Mac.\nNotes: ${data.notes || 'No notes.'}`,
+          [
+            { text: 'Later', style: 'cancel' },
+            { text: 'Update Now', onPress: () => performUpdate() }
+          ]
+        );
+      }
+    } catch (e) {
+      // Quietly fail if not connected or server not running
+      console.log('Update server not found or connected:', e.message);
+    }
+  };
+
+  const performUpdate = async () => {
+    setLoading(true);
+    try {
+      const apkUrl = 'http://localhost:8080/app-release.apk';
+      const fileUri = FileSystem.cacheDirectory + 'app-release.apk';
+
+      const downloadRes = await FileSystem.downloadAsync(apkUrl, fileUri);
+
+      if (downloadRes.status === 200) {
+        setLoading(false);
+        const contentUri = await FileSystem.getContentUriAsync(downloadRes.uri);
+        await IntentLauncher.startActivityAsync('android.intent.action.INSTALL_PACKAGE', {
+          data: contentUri,
+          flags: 1, // GRANT_READ_URI_PERMISSION
+          type: 'application/vnd.android.package-archive'
+        });
+      }
+    } catch (e) {
+      setLoading(false);
+      Alert.alert('Update Failed', 'Could not download or install update.');
+    }
+  };
 
   const requestPermissions = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
@@ -112,7 +116,56 @@ export default function App() {
     }
 
     setLoading(true);
-    setWebViewTesting(true);
+
+    // Determine the test URL based on the mode
+    const isWan = testMode === 'WAN';
+    // For WAN, we use a very large file to simulate streaming. For LAN, we use our infinite stream.
+    const testUrl = isWan
+      ? 'https://speed.cloudflare.com/__down?bytes=500000000' // 500MB for WAN to prevent finishing early
+      : `http://${serverIp}:8080/test-data`;
+
+    try {
+      const response = await fetch(testUrl);
+      const reader = response.body.getReader();
+      let receivedBytes = 0;
+      const startTime = Date.now();
+      const testDurationMs = 5000; // Measure for exactly 5 seconds
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        receivedBytes += value.length;
+
+        // Stop the test after the duration
+        if (Date.now() - startTime >= testDurationMs) {
+          await reader.cancel(); // Stop the stream
+          break;
+        }
+      }
+
+      const endTime = Date.now();
+      const durationSec = (endTime - startTime) / 1000;
+      const speedMbps = (receivedBytes * 8) / (durationSec * 1_000_000);
+
+      const newEntry = {
+        id: Date.now().toString(),
+        room: activeRoom,
+        type: `Speedtest (${testMode})`,
+        speed: `${speedMbps.toFixed(2)} Mbps`,
+        timestamp: new Date().toLocaleTimeString(),
+      };
+
+      setHistory((prev) => [newEntry, ...prev]);
+    } catch (error) {
+      if (error.message !== 'Reader was cancelled') {
+        console.warn('Speedtest Error:', error);
+        const msg = isWan ? 'Internet test failed.' : `Could not reach local server at ${serverIp}.`;
+        Alert.alert('Test Failed', msg);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const executeSignalScan = async () => {
@@ -126,17 +179,21 @@ export default function App() {
       '2.4GHz': 'N/A',
       '5GHz': 'N/A',
       '6GHz': 'N/A',
+      'LinkSpeed': 'N/A'
     };
 
     try {
       if (Platform.OS === 'android') {
         const ssid = await WifiManager.getCurrentWifiSSID();
 
+        // Direct metric: Link Speed (Mbps)
+        const linkSpeed = await WifiManager.getLinkSpeed();
+        bandData['LinkSpeed'] = `${linkSpeed} Mbps`;
+
         // This initiates a fresh scan and returns all nearby networks
         const networks = await WifiManager.reScanAndLoadWifiList();
 
         // Filter purely to the network we are currently connected to
-        // Note: remove quotes from ssid if android adds them occasionally
         const bareSsid = ssid.replace(/(^")|("$)/g, '');
         const targetNetworks = networks.filter(n => n.SSID.replace(/(^")|("$)/g, '') === bareSsid);
 
@@ -146,7 +203,7 @@ export default function App() {
 
         targetNetworks.forEach(net => {
           const freq = net.frequency;
-          const level = net.level; // dBm is negative, closer to 0 is better
+          const level = net.level; // dBm
 
           if (freq >= 2400 && freq < 2500) {
             if (level > signal24) signal24 = level;
@@ -165,7 +222,7 @@ export default function App() {
       console.warn('Error scanning WiFi:', error);
       Alert.alert(
         'Scan Error',
-        'Make sure Location is enabled. Android limits background scans to 4 times every 2 minutes. Wait a moment before scanning again.'
+        'Make sure Location is enabled. Android limits background scans.'
       );
     }
 
@@ -205,6 +262,10 @@ export default function App() {
               <Text style={styles.bandLabel}>6 GHz</Text>
               <Text style={styles.bandValue}>{item.bands['6GHz']}</Text>
             </View>
+            <View style={styles.bandBlock}>
+              <Text style={styles.bandLabel}>Link Speed</Text>
+              <Text style={[styles.bandValue, { color: '#28A745' }]}>{item.bands['LinkSpeed']}</Text>
+            </View>
           </View>
         )}
       </View>
@@ -240,6 +301,33 @@ export default function App() {
 
       {/* Middle Context Area */}
       <View style={styles.middleActionArea}>
+        <View style={styles.testModeContainer}>
+          <TouchableOpacity
+            style={[styles.modeToggle, testMode === 'WAN' && styles.modeToggleActive]}
+            onPress={() => setTestMode('WAN')}
+          >
+            <Text style={[styles.modeToggleText, testMode === 'WAN' && styles.modeToggleTextActive]}>Internet (WAN)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modeToggle, testMode === 'LAN' && styles.modeToggleActive]}
+            onPress={() => setTestMode('LAN')}
+          >
+            <Text style={[styles.modeToggleText, testMode === 'LAN' && styles.modeToggleTextActive]}>WiFi (LAN)</Text>
+          </TouchableOpacity>
+        </View>
+
+        {testMode === 'LAN' && (
+          <View style={styles.ipInputContainer}>
+            <Text style={styles.ipLabel}>Mac IP:</Text>
+            <TextInput
+              style={styles.ipInput}
+              placeholder="e.g. 192.168.1.10"
+              value={serverIp}
+              onChangeText={setServerIp}
+            />
+          </View>
+        )}
+
         <Text style={styles.activeRoomLabel}>
           Active Room: <Text style={styles.activeRoomName}>{activeRoom || 'None Selected'}</Text>
         </Text>
@@ -263,34 +351,6 @@ export default function App() {
         </View>
       </View>
 
-      <View style={{ width: 0, height: 0, position: 'absolute', opacity: 0 }}>
-        {webViewTesting && (
-          <WebView
-            source={{ html: cloudflareHtmlString }}
-            originWhitelist={['*']}
-            onMessage={(event) => {
-              const data = JSON.parse(event.nativeEvent.data);
-              setWebViewTesting(false);
-              setLoading(false);
-              
-              if (data.status === 'FINISHED') {
-                const speedMbps = data.download ? (data.download / 1000000) : 0;
-                const newEntry = {
-                  id: Date.now().toString(),
-                  room: activeRoom,
-                  type: 'Speedtest',
-                  speed: speedMbps > 0 ? `${speedMbps.toFixed(2)} Mbps` : 'Failed',
-                  timestamp: new Date().toLocaleTimeString(),
-                };
-                setHistory((prev) => [newEntry, ...prev]);
-              } else {
-                console.warn("Speedtest failed from webview", data.error);
-                Alert.alert("Test Failed", "Failed to run speed test.");
-              }
-            }}
-          />
-        )}
-      </View>
 
       {/* Bottom Half - Rooms */}
       <View style={styles.bottomHalf}>
@@ -450,6 +510,56 @@ const styles = StyleSheet.create({
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#CCC',
+  },
+  testModeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 15,
+    backgroundColor: '#FFF',
+    borderRadius: 8,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  modeToggle: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 6,
+  },
+  modeToggleActive: {
+    backgroundColor: '#007BFF',
+  },
+  modeToggleText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  modeToggleTextActive: {
+    color: '#FFF',
+  },
+  ipInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  ipLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginRight: 10,
+    color: '#333',
+  },
+  ipInput: {
+    flex: 1,
+    height: 35,
+    paddingHorizontal: 8,
+    color: '#000',
+    fontSize: 15,
   },
   activeRoomLabel: {
     fontSize: 14,
