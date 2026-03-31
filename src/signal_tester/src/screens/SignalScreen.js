@@ -26,6 +26,7 @@ export default function SignalScreen({ speedtestProviderKey }) {
   const [newRoom, setNewRoom] = useState('');
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [progressText, setProgressText] = useState('Running Test...');
   const [activeRoom, setActiveRoom] = useState(null);
   const [testModalVisible, setTestModalVisible] = useState(false);
   const [activeRoomForTest, setActiveRoomForTest] = useState(null);
@@ -35,6 +36,7 @@ export default function SignalScreen({ speedtestProviderKey }) {
   const provider = PROVIDERS[speedtestProviderKey] || PROVIDERS.ookla;
   const isNativeProvider = provider.type === 'native';
   const isCustomProvider = provider.id === 'custom';
+  const isSilentProvider = provider.id === 'librespeed' || provider.id === 'fastcom';
 
   useEffect(() => {
     requestPermissions();
@@ -66,7 +68,9 @@ export default function SignalScreen({ speedtestProviderKey }) {
   const onWebViewMessage = useCallback((event) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
-      if (data.status === 'FINISHED' && data.mbps > 0) {
+      if (data.status === 'PROGRESS') {
+        setProgressText(data.message);
+      } else if (data.status === 'FINISHED' && data.mbps > 0) {
         stopPolling();
         setTestModalVisible(false);
         setLoading(false);
@@ -114,8 +118,11 @@ export default function SignalScreen({ speedtestProviderKey }) {
       return;
     }
     setActiveRoomForTest(activeRoom);
+    setProgressText('Running Test...');
     setLoading(true);
-    setTestModalVisible(true);
+    if (!isSilentProvider) {
+      setTestModalVisible(true);
+    }
   };
 
   const cancelSpeedtest = () => {
@@ -221,10 +228,25 @@ export default function SignalScreen({ speedtestProviderKey }) {
   // ── JSX ────────────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
-      {/* History */}
-      <View style={styles.topHalf}>
-        <View style={styles.historyHeaderRow}>
+    <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
+      {/* Background WebView for silent providers */}
+      {loading && isSilentProvider && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
+          <WebView
+            ref={webViewRef}
+            source={{ uri: provider.url }}
+            onLoad={startPolling}
+            onMessage={onWebViewMessage}
+            javaScriptEnabled
+            domStorageEnabled
+          />
+        </View>
+      )}
+
+      <View style={styles.container}>
+        {/* History */}
+        <View style={styles.topHalf}>
+          <View style={styles.historyHeaderRow}>
           <Text style={styles.sectionTitle}>History Log</Text>
           <TouchableOpacity
             onPress={generateAndSavePDF}
@@ -346,11 +368,18 @@ export default function SignalScreen({ speedtestProviderKey }) {
           ))}
         </View>
         {loading && (
-          <View style={styles.loadingOverlay}>
+          <View style={[styles.loadingOverlay, isSilentProvider && { backgroundColor: '#F8F9FA' }]}>
             <ActivityIndicator size="large" color="#007BFF" />
-            <Text style={styles.loadingText}>Running Test...</Text>
+            <Text style={styles.loadingText}>{progressText}</Text>
+            {isSilentProvider && (
+              <TouchableOpacity onPress={cancelSpeedtest} style={styles.cancelSilentBtn}>
+                <Text style={styles.cancelSilentBtnText}>Cancel</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
+      </View>
+      
       </View>
     </View>
   );
@@ -412,6 +441,8 @@ const styles = StyleSheet.create({
   roomButton:     { backgroundColor: '#F8F9FA', borderWidth: 1, borderColor: '#CCC', width: '30%', paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginBottom: 10 },
   roomButtonActive: { backgroundColor: '#E6F4FE', borderColor: '#007BFF', borderWidth: 2 },
   roomButtonText: { color: '#333', fontSize: 14, fontWeight: '600' },
-  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.7)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(255,255,255,0.85)', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   loadingText:    { marginTop: 10, fontSize: 16, fontWeight: '600', color: '#333' },
+  cancelSilentBtn:{ marginTop: 20, backgroundColor: '#DC3545', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
+  cancelSilentBtnText:{ color: '#FFF', fontWeight: 'bold', fontSize: 14 },
 });

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 export ANDROID_HOME="$HOME/Library/Android/sdk"
 unset ANDROID_SDK_ROOT
 export JAVA_HOME="/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home"

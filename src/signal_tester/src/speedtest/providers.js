@@ -33,18 +33,122 @@ const OOKLA_POLL_JS = `
 // --- Netflix Fast.com ---
 const FASTCOM_POLL_JS = `
 (function() {
-  var speedEl = document.querySelector('#speed-value');
-  var unitEl  = document.querySelector('#speed-units');
-  var doneEl  = document.querySelector('.show-more-details-link') ||
-                document.querySelector('.succeeded');
-  if (speedEl && unitEl && speedEl.innerText && speedEl.innerText !== '0' && doneEl) {
-    var raw  = parseFloat(speedEl.innerText);
-    var unit = (unitEl.innerText || 'Mbps').trim();
-    var mbps = raw;
-    if (unit === 'Gbps') mbps = raw * 1000;
-    if (unit === 'Kbps') mbps = raw / 1000;
-    window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'FINISHED', mbps: mbps }));
-  }
+  if (window.__fcRunning) return;
+  window.__fcRunning = true;
+  window.__fcLastMsg = '';
+  window.__fcPeak = 0;
+
+  // Hide UI completely to optimize processor execution overhead
+  var style = document.createElement('style');
+  style.innerHTML = 'body { display: none !important; opacity: 0 !important; }';
+  document.head.appendChild(style);
+
+  var interval = setInterval(function() {
+    var speedEl = document.querySelector('#speed-value');
+    var unitEl  = document.querySelector('#speed-units');
+    var doneEl  = document.querySelector('.show-more-details-link') ||
+                  document.querySelector('.succeeded');
+    
+    var val = speedEl ? speedEl.innerText.trim() : '0';
+    var unit = unitEl ? (unitEl.innerText || 'Mbps').trim() : 'Mbps';
+    var isDone = !!doneEl;
+
+    var raw = parseFloat(val) || 0;
+    var currentMbps = raw;
+    if (unit === 'Gbps') currentMbps = raw * 1000;
+    if (unit === 'Kbps') currentMbps = raw / 1000;
+    
+    if (currentMbps > window.__fcPeak) {
+      window.__fcPeak = currentMbps;
+    }
+
+    var msg = 'Connecting to server...';
+    if (val !== '0' && val !== '' && !isDone) {
+      msg = 'Measuring download: ' + val + ' ' + unit;
+    } else if (isDone) {
+      msg = 'Finishing up...';
+    }
+
+    if (msg !== window.__fcLastMsg) {
+      window.__fcLastMsg = msg;
+      window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'PROGRESS', message: msg }));
+    }
+
+    if (isDone && val !== '0' && val !== '' && !window.__fcDone) {
+      window.__fcDone = true;
+      clearInterval(interval);
+      window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'FINISHED', mbps: window.__fcPeak }));
+    }
+  }, 250);
+})();
+`;
+
+// --- LibreSpeed (librespeed.org) ---
+const LIBRESPEED_POLL_JS = `
+(function() {
+  if (window.__lsRunning) return;
+  window.__lsRunning = true;
+  window.__lsPeak = 0;
+  window.__lsLastMsg = '';
+
+  // Hide UI for zero overhead and hide visual clutter
+  var style = document.createElement('style');
+  style.innerHTML = 'header, footer, .server-selector, .ping, .jitter, #upload-gauge { display: none !important; opacity: 0 !important; }';
+  document.head.appendChild(style);
+
+  var interval = setInterval(function() {
+    var btn = document.querySelector('#start-button');
+    if (!btn) return;
+    var btnText = btn.textContent || '';
+    
+    // Auto start test when ready
+    if (btnText === "Let's start" && !window.__lsStarted) {
+      btn.click();
+      window.__lsStarted = true;
+    }
+
+    // Track peak download speed
+    var dlSpan = document.querySelector('#download-speed');
+    var valDl = dlSpan ? parseFloat(dlSpan.textContent) || 0 : 0;
+    if (valDl > window.__lsPeak) window.__lsPeak = valDl;
+
+    var ulSpan = document.querySelector('#upload-speed');
+    var valUl = ulSpan ? parseFloat(ulSpan.textContent) || 0 : 0;
+
+    var isFinished = btnText === 'Restart' || btnText.toLowerCase().includes('restart');
+    // If upload starts tracking any speed over 0, we can safely assume download is totally done!
+    var uploadStarted = valUl > 0;
+
+    var msg = 'Running Test...';
+    if (btnText === 'Loading...' || btnText === '') {
+      msg = 'Finding nearest server...';
+    } else if (btnText === "Let's start") {
+      msg = 'Server found, initiating...';
+    } else if (btnText === 'Abort' || btnText.includes('Running')) {
+      if (uploadStarted) {
+        msg = 'Finishing up...';
+      } else {
+        msg = 'Measuring download: ' + valDl.toFixed(1) + ' Mbps';
+      }
+    } else if (isFinished) {
+      msg = 'Finishing up...';
+    }
+
+    // Send progress updates
+    if (msg !== window.__lsLastMsg) {
+      window.__lsLastMsg = msg;
+      window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'PROGRESS', message: msg }));
+    }
+
+    // Terminate early to skip upload step
+    if (uploadStarted || isFinished) {
+      clearInterval(interval);
+      if (window.__lsPeak > 0 && !window.__lsDone) {
+        window.__lsDone = true;
+        window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'FINISHED', mbps: window.__lsPeak }));
+      }
+    }
+  }, 100);
 })();
 `;
 
@@ -141,6 +245,15 @@ export const PROVIDERS = {
     url: null,
     pollJs: null,
     html: CUSTOM_SPEEDTEST_HTML,
+  },
+  librespeed: {
+    id: 'librespeed',
+    label: 'LibreSpeed',
+    subtitle: 'Open Source — peak download optimized',
+    type: 'webview',
+    url: 'https://librespeed.org/',
+    pollJs: LIBRESPEED_POLL_JS,
+    html: null,
   },
   speedchecker: {
     id: 'speedchecker',

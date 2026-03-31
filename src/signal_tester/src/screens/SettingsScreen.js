@@ -9,11 +9,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { PROVIDERS } from '../speedtest/providers';
 
-const PROVIDER_ORDER = ['ookla', 'fastcom', 'custom', 'speedchecker'];
+const PROVIDER_ORDER = ['ookla', 'fastcom', 'librespeed', 'custom', 'speedchecker'];
 
 const PROVIDER_ICONS = {
   ookla:        'speedometer-outline',
   fastcom:      'flash-outline',
+  librespeed:   'rocket-outline',
   custom:       'construct-outline',
   speedchecker: 'hardware-chip-outline',
 };
@@ -59,9 +60,9 @@ export default function SettingsScreen({ selectedProvider, onSelectProvider }) {
       <View style={styles.infoBox}>
         <Ionicons name="information-circle-outline" size={18} color="#0077CC" style={{ marginTop: 1 }} />
         <Text style={styles.infoText}>
-          Ookla and Fast.com open in a full-screen browser. The Custom engine
-          runs silently in-app via parallel CDN connections. SpeedChecker uses
-          a native SDK — no browser, no WebView, just raw sockets.
+          Ookla and Fast.com open in a full-screen browser. LibreSpeed is optimized
+          for peak download. The Custom engine runs silently in-app via parallel CDN connections.
+          SpeedChecker uses a native SDK — no browser, no WebView, just raw sockets.
         </Text>
       </View>
     </ScrollView>
