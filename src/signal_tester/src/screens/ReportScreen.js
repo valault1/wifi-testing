@@ -116,11 +116,24 @@ export default function ReportScreen({
         >
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
-                    <Text style={styles.title}>Create Report</Text>
-                    <Text style={styles.subtitle}>Enter property details for your WiFi assessment.</Text>
+                    <Text style={styles.title}>Locations</Text>
+                    <Text style={styles.subtitle}>Manage your saved testing properties.</Text>
                 </View>
 
+                {locations && locations.length > 0 && (
+                    <View style={styles.card}>
+                        <Text style={styles.label}>Saved Locations</Text>
+                        {locations.map(loc => (
+                            <View key={loc.id} style={styles.savedLocationItem}>
+                                <Text style={styles.savedLocationName}>{loc.name}</Text>
+                                <Text style={styles.savedLocationRooms}>{loc.rooms?.length || 0} rooms</Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
                 <View style={styles.card}>
+                    <Text style={styles.formTitle}>Add New Location</Text>
                     <Text style={styles.label}>Location Name</Text>
                     <TextInput
                         style={styles.input}
@@ -209,7 +222,7 @@ export default function ReportScreen({
 
                 <TouchableOpacity style={styles.saveBtn} onPress={handleSaveLocation}>
                     <Ionicons name="location" size={20} color="#FFF" />
-                    <Text style={styles.saveBtnText}>Save Location to List</Text>
+                    <Text style={styles.saveBtnText}>Save Location</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.submitBtn} onPress={handleCreateReport}>

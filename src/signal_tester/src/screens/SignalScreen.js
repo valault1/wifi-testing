@@ -14,10 +14,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import WifiManager from 'react-native-wifi-reborn';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
 import { WebView } from 'react-native-webview';
-import { generatePdfHtml } from '../pdfGenerator';
 import { PROVIDERS } from '../speedtest/providers';
 import SpeedCheckerScreen from './SpeedCheckerScreen';
 
@@ -151,14 +148,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
     setTestActive(true);
   };
 
-  const executeOoklaTest = () => {
-    setActiveRoomForTest(activeRoom || 'No Location');
-    setActiveProviderKey('ookla');
-    setTestMode('modal');
-    setLoading(true);
-    setTestModalVisible(true);
-  };
-
   const cancelSpeedtest = () => {
     stopPolling();
     setTestModalVisible(false);
@@ -167,63 +156,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
     setTestPhase(null);
     setCurrentSpeed(0);
     setTestMode(null);
-  };
-
-  // ── Signal Scan ────────────────────────────────────────────────────────────
-
-  const executeSignalScan = async () => {
-    if (!activeRoom) {
-      Alert.alert('No Room Selected', 'Please select a room from the grid first.');
-      return;
-    }
-
-    setLoading(true);
-    const bandData = { '2.4GHz': 'N/A', '5GHz': 'N/A', '6GHz': 'N/A' };
-
-    try {
-      if (Platform.OS === 'android') {
-        const ssid = await WifiManager.getCurrentWifiSSID();
-        const networks = await WifiManager.reScanAndLoadWifiList();
-        const bareSsid = ssid.replace(/(^\")|(\"$)/g, '');
-        const targets = networks.filter(n => n.SSID.replace(/(^\")|(\"$)/g, '') === bareSsid);
-
-        let s24 = -1000, s5 = -1000, s6 = -1000;
-        targets.forEach(({ frequency: f, level }) => {
-          if (f >= 2400 && f < 2500) { if (level > s24) s24 = level; }
-          else if (f >= 5100 && f < 5900) { if (level > s5) s5 = level; }
-          else if (f >= 5900 && f < 7200) { if (level > s6) s6 = level; }
-        });
-        if (s24 !== -1000) bandData['2.4GHz'] = `${s24} dBm`;
-        if (s5 !== -1000) bandData['5GHz'] = `${s5} dBm`;
-        if (s6 !== -1000) bandData['6GHz'] = `${s6} dBm`;
-      }
-    } catch (error) {
-      console.warn('WiFi scan error:', error);
-      Alert.alert('Scan Error', 'Make sure Location is enabled. Android limits scans to 4 times per 2 minutes.');
-    }
-
-    const resultEntry = {
-      id: Date.now().toString(),
-      room: activeRoom,
-      type: 'Signal',
-      bands: bandData,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-
-    updateActiveLocation({ history: [resultEntry, ...history] });
-    setLoading(false);
-  };
-
-  // ── PDF Export ─────────────────────────────────────────────────────────────
-
-  const generateAndSavePDF = async () => {
-    try {
-      const { uri } = await Print.printToFileAsync({ html: generatePdfHtml(history) });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    } catch (err) {
-      console.warn(err);
-      Alert.alert('Error', 'Failed to generate or share PDF.');
-    }
   };
 
   // ── Render helpers ─────────────────────────────────────────────────────────
@@ -270,13 +202,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
       <View style={styles.topHalf}>
         <View style={styles.historyHeaderRow}>
           <Text style={styles.sectionTitle}>History Log</Text>
-          <TouchableOpacity
-            onPress={generateAndSavePDF}
-            style={[styles.savePdfButton, history.length === 0 && styles.savePdfButtonDisabled]}
-            disabled={history.length === 0}
-          >
-            <Text style={styles.savePdfText}>Save PDF</Text>
-          </TouchableOpacity>
         </View>
         {history.length === 0 ? (
           <Text style={styles.emptyText}>No data yet. Select a room and run a test.</Text>
@@ -324,14 +249,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
           </View>
         ) : (
           <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.btnSignal, (loading || (isSessionActive && !activeRoom)) && styles.btnDisabled]}
-              onPress={executeSignalScan}
-              disabled={loading || (isSessionActive && !activeRoom)}
-            >
-              <Text style={styles.actionBtnText}>Scan Signal</Text>
-            </TouchableOpacity>
-
             {isSessionActive ? (
               <TouchableOpacity
                 style={[styles.actionBtn, styles.btnSpeed, (!activeRoom || loading) && styles.btnDisabled]}
@@ -349,14 +266,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
                 <Text style={styles.actionBtnText}>Quick Test</Text>
               </TouchableOpacity>
             )}
-
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.btnOokla, loading && styles.btnDisabled]}
-              onPress={executeOoklaTest}
-              disabled={loading}
-            >
-              <Text style={styles.actionBtnText}>Ookla (Popup)</Text>
-            </TouchableOpacity>
 
             {isSessionActive ? (
               <TouchableOpacity
@@ -559,10 +468,8 @@ const styles = StyleSheet.create({
   activeRoomName: { fontWeight: 'bold', color: '#000', fontSize: 15 },
   actionButtons: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
   actionBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, flexBasis: '48%', alignItems: 'center' },
-  btnSignal: { backgroundColor: '#007BFF' },
   btnSpeed: { backgroundColor: '#28A745' },
   btnQuick: { backgroundColor: '#6f42c1' },
-  btnOokla: { backgroundColor: '#17A2B8' },
   btnStartSession: { backgroundColor: '#FD7E14' },
   btnEndSession: { backgroundColor: '#DC3545' },
   btnDisabled: { backgroundColor: '#A0A0A0' },

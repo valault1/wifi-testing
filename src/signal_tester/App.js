@@ -10,7 +10,7 @@ import { DEFAULT_PROVIDER } from './src/speedtest/providers';
 
 const TABS = [
   { id: 'signal', label: 'Speed Test', icon: 'speedometer-outline', iconActive: 'speedometer' },
-  { id: 'report', label: 'Report', icon: 'document-text-outline', iconActive: 'document-text' },
+  { id: 'report', label: 'Locations', icon: 'location-outline', iconActive: 'location' },
   { id: 'settings', label: 'Settings', icon: 'settings-outline', iconActive: 'settings' },
 ];
 
