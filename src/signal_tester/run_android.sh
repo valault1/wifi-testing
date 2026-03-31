@@ -7,4 +7,5 @@ export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:
 cd "$(dirname "$0")"
 source ~/.zshrc
 nvm use 22 || nvm install 22
+$ANDROID_HOME/platform-tools/adb reverse tcp:8081 tcp:8081 2>/dev/null
 npm run android -- "$@"
