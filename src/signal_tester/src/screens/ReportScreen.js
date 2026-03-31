@@ -9,21 +9,53 @@ import {
     KeyboardAvoidingView,
     Platform,
     Alert,
+    Modal,
+    FlatList,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
+import { generatePdfHtml } from '../pdfGenerator';
 
 export default function ReportScreen({
     locations,
     setLocations
 }) {
     const [locationName, setLocationName] = useState('');
-    const [numRooms, setNumRooms] = useState('');
-    const [roomNames, setRoomNames] = useState('');
-    const [wifiPlan, setWifiPlan] = useState('');
-    const [hardwareType, setHardwareType] = useState('separate'); // 'separate' or 'combo'
+    const [wifiProvider, setWifiProvider] = useState('');
+    const [wifiSpeed, setWifiSpeed] = useState('');
+
+    // Dynamic Rooms
+    const [roomsList, setRoomsList] = useState([]);
+    const [newRoomName, setNewRoomName] = useState('');
+
+    // Dynamic Hardware
+    const [showModem, setShowModem] = useState(false);
+    const [showRouter, setShowRouter] = useState(false);
+    const [showCombo, setShowCombo] = useState(false);
+
     const [modemName, setModemName] = useState('');
     const [routerName, setRouterName] = useState('');
     const [comboName, setComboName] = useState('');
+
+    const [selectedHistoryLocation, setSelectedHistoryLocation] = useState(null);
+    const [previewLocation, setPreviewLocation] = useState(null);
+
+    const handleViewPdf = (location) => {
+        setPreviewLocation(location);
+    };
+
+    const handleSharePdf = async () => {
+        if (!previewLocation) return;
+        try {
+            const { uri } = await Print.printToFileAsync({ html: generatePdfHtml(previewLocation) });
+            await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+        } catch (err) {
+            console.warn(err);
+            Alert.alert('Error', 'Failed to generate or share PDF.');
+        }
+    };
 
     const handleSaveLocation = () => {
         if (!locationName) {
@@ -31,82 +63,76 @@ export default function ReportScreen({
             return;
         }
 
-        const roomList = roomNames.split(',').map(r => r.trim()).filter(r => r);
         const newId = Date.now().toString();
 
         const newLocation = {
             id: newId,
             name: locationName,
-            rooms: roomList.length > 0 ? roomList : ['Living Room', 'Kitchen', 'Bedroom'], // Default rooms if none provided
+            rooms: roomsList.length > 0 ? roomsList : ['Living Room'], // Default room if none provided
             history: [],
             reportData: {
                 locationName,
-                numRooms,
-                roomNames,
-                wifiPlan,
-                hardwareType,
+                wifiProvider,
+                wifiSpeed,
+                hardwareType: showCombo ? 'combo' : (showModem || showRouter ? 'separate' : 'unknown'),
                 modemName,
                 routerName,
-                comboName
+                comboName,
+                numRooms: roomsList.length > 0 ? roomsList.length.toString() : '1'
             }
         };
 
         setLocations(prev => [...prev, newLocation]);
         Alert.alert('Location Saved', `${locationName} has been saved. You can now start a session for it on the Speed Test tab!`);
 
-        // Optionally clear form
+        // Clear form
         setLocationName('');
-        setNumRooms('');
-        setRoomNames('');
-        setWifiPlan('');
+        setRoomsList([]);
+        setNewRoomName('');
+        setWifiProvider('');
+        setWifiSpeed('');
         setModemName('');
         setRouterName('');
         setComboName('');
+        setShowModem(false);
+        setShowRouter(false);
+        setShowCombo(false);
     };
 
-    const handleCreateReport = () => {
-        if (!locationName || !numRooms || !roomNames || !wifiPlan) {
-            Alert.alert('Missing Information', 'Please fill in all fields before generating the report.');
-            return;
-        }
-
-        const hardwareData = hardwareType === 'separate'
-            ? { type: 'Separate', modem: modemName, router: routerName }
-            : { type: 'Combo', name: comboName };
-
-        // placeholder for report generation logic
-        console.log('Generating Report with data:', {
-            locationName,
-            numRooms,
-            roomNames,
-            wifiPlan,
-            hardware: hardwareData,
-        });
-
-        const hardwareDisplay = hardwareType === 'separate'
-            ? `Modem: ${modemName || 'None'}, Router: ${routerName || 'None'}`
-            : `Combo: ${comboName || 'None'}`;
-
-        Alert.alert('Report Data Captured', `Location: ${locationName}\nRooms: ${numRooms}\nPlan: ${wifiPlan}\nHardware: ${hardwareDisplay}`);
+    const handleAddRoom = () => {
+        if (!newRoomName.trim()) return;
+        setRoomsList(prev => [...prev, newRoomName.trim()]);
+        setNewRoomName('');
     };
 
-    const HardwareToggle = ({ label, isActive, onPress, icon }) => (
-        <TouchableOpacity
-            style={[styles.hardwareBtn, isActive && styles.hardwareBtnActive]}
-            onPress={onPress}
-            activeOpacity={0.7}
-        >
-            <Ionicons
-                name={icon}
-                size={24}
-                color={isActive ? '#FFF' : '#007BFF'}
-                style={styles.hardwareIcon}
-            />
-            <Text style={[styles.hardwareBtnText, isActive && styles.hardwareBtnTextActive]}>
-                {label}
-            </Text>
-            {isActive && <Ionicons name="checkmark-circle" size={20} color="#FFF" />}
-        </TouchableOpacity>
+    const removeRoom = (index) => {
+        setRoomsList(prev => prev.filter((_, i) => i !== index));
+    };
+
+
+    const renderHistoryItem = ({ item }) => (
+        <View style={styles.historyItem}>
+            <View style={styles.historyHeaderRow}>
+                <Text style={styles.historyRoom}>{item.room || 'Generic'}</Text>
+                <Text style={[styles.historyTypeBadge, item.type === 'Speedtest' ? styles.pillSpeed : styles.pillSignal]}>
+                    {item.type}
+                </Text>
+            </View>
+            <View style={styles.historyBody}>
+                {item.type === 'Speedtest' ? (
+                    <Text style={styles.historyDetails}>
+                        <Text style={{ fontWeight: 'bold', fontSize: 16 }}>{item.speed}</Text>
+                        {item.extras?.length > 0 ? `\n${item.extras.join('  ·  ')}` : ''}
+                        {item.provider ? `\nvia ${item.provider}` : ''}
+                    </Text>
+                ) : (
+                    <Text style={styles.historyDetails}>
+                        {item.bands ? Object.entries(item.bands).map(([b, v]) => `${b}: ${v}`).join('\n') : 'N/A'}
+                    </Text>
+                )}
+            </View>
+            <Text style={styles.historyTime}>{item.timestamp}</Text>
+        </View>
     );
 
     return (
@@ -114,6 +140,50 @@ export default function ReportScreen({
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.container}
         >
+            <Modal visible={!!selectedHistoryLocation} animationType="slide" presentationStyle="pageSheet">
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>{selectedHistoryLocation?.name}</Text>
+                        <TouchableOpacity onPress={() => setSelectedHistoryLocation(null)}>
+                            <Ionicons name="close-circle" size={28} color="#666" />
+                        </TouchableOpacity>
+                    </View>
+                    <FlatList
+                        data={selectedHistoryLocation?.history || []}
+                        keyExtractor={(it, idx) => it.id || idx.toString()}
+                        renderItem={renderHistoryItem}
+                        contentContainerStyle={{ padding: 20 }}
+                        ListEmptyComponent={<Text style={{ textAlign: 'center', color: '#666', marginTop: 40 }}>No test history recorded.</Text>}
+                    />
+                </View>
+            </Modal>
+
+            {/* HTML PDF Preview Modal */}
+            <Modal visible={!!previewLocation} animationType="slide" presentationStyle="pageSheet">
+                <View style={[styles.modalContainer, { paddingTop: Platform.OS === 'ios' ? 40 : 10 }]}>
+                    <View style={styles.modalHeader}>
+                        <TouchableOpacity onPress={() => setPreviewLocation(null)} style={{ padding: 4 }}>
+                            <Text style={{ color: '#007BFF', fontSize: 16, fontWeight: 'bold' }}>Close</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.modalTitle}>Report Preview</Text>
+                        <TouchableOpacity onPress={handleSharePdf} style={{ padding: 4, flexDirection: 'row', alignItems: 'center' }}>
+                            <Ionicons name="share-outline" size={20} color="#007BFF" style={{ marginRight: 6 }} />
+                            <Text style={{ color: '#007BFF', fontSize: 16, fontWeight: 'bold' }}>Send</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ flex: 1, backgroundColor: '#fff' }}>
+                        {previewLocation && (
+                            <WebView
+                                source={{ html: generatePdfHtml(previewLocation) }}
+                                originWhitelist={['*']}
+                                scalesPageToFit={true}
+                                bounces={false}
+                            />
+                        )}
+                    </View>
+                </View>
+            </Modal>
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.header}>
                     <Text style={styles.title}>Locations</Text>
@@ -125,8 +195,20 @@ export default function ReportScreen({
                         <Text style={styles.label}>Saved Locations</Text>
                         {locations.map(loc => (
                             <View key={loc.id} style={styles.savedLocationItem}>
-                                <Text style={styles.savedLocationName}>{loc.name}</Text>
-                                <Text style={styles.savedLocationRooms}>{loc.rooms?.length || 0} rooms</Text>
+                                <View style={styles.locHeaderRow}>
+                                    <Text style={styles.savedLocationName}>{loc.name}</Text>
+                                    <Text style={styles.savedLocationRooms}>{loc.rooms?.length || 0} rooms</Text>
+                                </View>
+                                <View style={styles.locActionRow}>
+                                    <TouchableOpacity style={styles.locActionBtn} onPress={() => setSelectedHistoryLocation(loc)}>
+                                        <Ionicons name="list" size={16} color="#007BFF" />
+                                        <Text style={styles.locActionBtnText}>View Tests</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity style={styles.locActionBtn} onPress={() => handleViewPdf(loc)}>
+                                        <Ionicons name="document-text" size={16} color="#28A745" />
+                                        <Text style={[styles.locActionBtnText, { color: '#28A745' }]}>View PDF</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         ))}
                     </View>
@@ -142,76 +224,100 @@ export default function ReportScreen({
                         onChangeText={setLocationName}
                     />
 
-                    <Text style={styles.label}>Number of Rooms</Text>
+                    <Text style={styles.label}>Rooms</Text>
+                    <View style={styles.addInputRow}>
+                        <TextInput
+                            style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                            placeholder="e.g. Living Room"
+                            value={newRoomName}
+                            onChangeText={setNewRoomName}
+                            onSubmitEditing={handleAddRoom}
+                        />
+                        <TouchableOpacity style={styles.addBtn} onPress={handleAddRoom}>
+                            <Ionicons name="add" size={24} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {roomsList.length > 0 && (
+                        <View style={styles.roomChipsContainer}>
+                            {roomsList.map((rm, idx) => (
+                                <View key={idx} style={styles.roomChip}>
+                                    <Text style={styles.roomChipText}>{rm}</Text>
+                                    <TouchableOpacity onPress={() => removeRoom(idx)}>
+                                        <Ionicons name="close-circle" size={16} color="#888" style={{ marginLeft: 6 }} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    <Text style={styles.label}>WiFi Provider</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="e.g. 5"
-                        keyboardType="numeric"
-                        value={numRooms}
-                        onChangeText={setNumRooms}
+                        placeholder="e.g. Xfinity"
+                        value={wifiProvider}
+                        onChangeText={setWifiProvider}
                     />
 
-                    <Text style={styles.label}>Room Names (comma separated)</Text>
-                    <TextInput
-                        style={[styles.input, styles.textArea]}
-                        placeholder="e.g. Living Room, Kitchen, Master Bedroom"
-                        multiline
-                        numberOfLines={3}
-                        textAlignVertical="top"
-                        value={roomNames}
-                        onChangeText={setRoomNames}
-                    />
-
-                    <Text style={styles.label}>Current WiFi Plan</Text>
+                    <Text style={styles.label}>WiFi Speed Tier</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="e.g. Xfinity Gig (1200 Mbps)"
-                        value={wifiPlan}
-                        onChangeText={setWifiPlan}
+                        placeholder="e.g. 1.2 Gbps"
+                        value={wifiSpeed}
+                        onChangeText={setWifiSpeed}
                     />
 
                     <Text style={styles.label}>Hardware Configuration</Text>
-                    <View style={styles.hardwareRow}>
-                        <HardwareToggle
-                            label="Separate"
-                            icon="git-branch-outline"
-                            isActive={hardwareType === 'separate'}
-                            onPress={() => setHardwareType('separate')}
-                        />
-                        <HardwareToggle
-                            label="Combo"
-                            icon="layers-outline"
-                            isActive={hardwareType === 'combo'}
-                            onPress={() => setHardwareType('combo')}
-                        />
+                    <View style={styles.hardwareOptionsRow}>
+                        {!showModem && (
+                            <TouchableOpacity style={styles.addHardwareBtn} onPress={() => setShowModem(true)}>
+                                <Ionicons name="add-circle-outline" size={18} color="#007BFF" />
+                                <Text style={styles.addHardwareBtnText}>Add Modem</Text>
+                            </TouchableOpacity>
+                        )}
+                        {!showRouter && (
+                            <TouchableOpacity style={styles.addHardwareBtn} onPress={() => setShowRouter(true)}>
+                                <Ionicons name="add-circle-outline" size={18} color="#007BFF" />
+                                <Text style={styles.addHardwareBtnText}>Add Router</Text>
+                            </TouchableOpacity>
+                        )}
+                        {!showCombo && (
+                            <TouchableOpacity style={styles.addHardwareBtn} onPress={() => setShowCombo(true)}>
+                                <Ionicons name="add-circle-outline" size={18} color="#007BFF" />
+                                <Text style={styles.addHardwareBtnText}>Add Combo</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
 
-                    {hardwareType === 'separate' ? (
-                        <View style={styles.nameInputsRow}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.subLabel}>Modem Name</Text>
-                                <TextInput
-                                    style={styles.inputSmall}
-                                    placeholder="e.g. Arbis SB8200"
-                                    value={modemName}
-                                    onChangeText={setModemName}
-                                />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={styles.subLabel}>Router Name</Text>
-                                <TextInput
-                                    style={styles.inputSmall}
-                                    placeholder="e.g. Eero Pro 6"
-                                    value={routerName}
-                                    onChangeText={setRouterName}
-                                />
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={{ marginTop: 12 }}>
-                            <Text style={styles.subLabel}>Combo Modem/Router Name</Text>
+                    {showModem && (
+                        <View style={styles.hardwareInputBlock}>
+                            <Text style={styles.subLabel}>Modem Name</Text>
                             <TextInput
-                                style={styles.input}
+                                style={styles.inputSmall}
+                                placeholder="e.g. Arris SB8200"
+                                value={modemName}
+                                onChangeText={setModemName}
+                            />
+                        </View>
+                    )}
+
+                    {showRouter && (
+                        <View style={styles.hardwareInputBlock}>
+                            <Text style={styles.subLabel}>Router Name</Text>
+                            <TextInput
+                                style={styles.inputSmall}
+                                placeholder="e.g. Eero Pro 6"
+                                value={routerName}
+                                onChangeText={setRouterName}
+                            />
+                        </View>
+                    )}
+
+                    {showCombo && (
+                        <View style={styles.hardwareInputBlock}>
+                            <Text style={styles.subLabel}>Modem/Router Combo Name</Text>
+                            <TextInput
+                                style={styles.inputSmall}
                                 placeholder="e.g. Netgear Nighthawk C7000"
                                 value={comboName}
                                 onChangeText={setComboName}
@@ -223,11 +329,6 @@ export default function ReportScreen({
                 <TouchableOpacity style={styles.saveBtn} onPress={handleSaveLocation}>
                     <Ionicons name="location" size={20} color="#FFF" />
                     <Text style={styles.saveBtnText}>Save Location</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.submitBtn} onPress={handleCreateReport}>
-                    <Text style={styles.submitBtnText}>Generate Report Preview</Text>
-                    <Ionicons name="arrow-forward" size={20} color="#FFF" />
                 </TouchableOpacity>
             </ScrollView>
         </KeyboardAvoidingView>
@@ -412,5 +513,173 @@ const styles = StyleSheet.create({
         color: '#FFF',
         fontSize: 18,
         fontWeight: '800',
+    },
+    savedLocationItem: {
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEE',
+    },
+    locHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    locActionRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    locActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f1f3f5',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 6,
+        gap: 4,
+    },
+    locActionBtnText: {
+        color: '#007BFF',
+        fontWeight: '600',
+        fontSize: 13,
+    },
+    savedLocationName: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+    },
+    savedLocationRooms: {
+        fontSize: 14,
+        color: '#666',
+    },
+    formTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#222',
+        marginBottom: 16,
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        backgroundColor: '#FFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E9ECEF',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    historyItem: {
+        backgroundColor: '#FFF',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
+    },
+    historyHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    historyRoom: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#111',
+    },
+    historyTypeBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 'bold',
+        color: '#FFF',
+        overflow: 'hidden',
+    },
+    pillSpeed: { backgroundColor: '#28A745' },
+    pillSignal: { backgroundColor: '#007BFF' },
+    historyBody: {
+        marginBottom: 8,
+    },
+    historyDetails: {
+        fontSize: 14,
+        color: '#444',
+        lineHeight: 20,
+    },
+    historyTime: {
+        fontSize: 12,
+        color: '#888',
+        textAlign: 'right',
+    },
+    addInputRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 12,
+    },
+    addBtn: {
+        backgroundColor: '#007BFF',
+        borderRadius: 10,
+        paddingHorizontal: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    roomChipsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    roomChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#e2e8f0',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+    },
+    roomChipText: {
+        fontSize: 14,
+        color: '#475569',
+        fontWeight: '600',
+    },
+    hardwareOptionsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+        marginBottom: 12,
+    },
+    addHardwareBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+        borderWidth: 1,
+        borderColor: '#cbd5e1',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        gap: 6,
+    },
+    addHardwareBtnText: {
+        color: '#007BFF',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    hardwareInputBlock: {
+        marginBottom: 12,
+        backgroundColor: '#f8fafc',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e2e8f0',
     },
 });

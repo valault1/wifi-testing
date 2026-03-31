@@ -184,8 +184,12 @@ function generatePdfHtml(location) {
               <div class="prop-value">${reportData.numRooms || 'Undisclosed'}</div>
             </div>
             <div class="prop-col">
-              <div class="prop-label">WiFi Plan</div>
-              <div class="prop-value">${reportData.wifiPlan || 'Unknown'}</div>
+              <div class="prop-label">WiFi Provider</div>
+              <div class="prop-value">${reportData.wifiProvider || 'Unknown'}</div>
+            </div>
+            <div class="prop-col">
+              <div class="prop-label">Speed Tier</div>
+              <div class="prop-value">${reportData.wifiSpeed || 'Unknown'}</div>
             </div>
             <div class="prop-col">
               <div class="prop-label">Hardware Type</div>

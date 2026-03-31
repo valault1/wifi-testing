@@ -233,226 +233,226 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
         {/* History */}
         <View style={styles.topHalf}>
           <View style={styles.historyHeaderRow}>
-          <Text style={styles.sectionTitle}>History Log</Text>
-        </View>
-        {history.length === 0 ? (
-          <Text style={styles.emptyText}>No data yet. Select a room and run a test.</Text>
-        ) : (
-          <FlatList
-            data={history}
-            keyExtractor={(item) => item.id}
-            renderItem={renderHistoryItem}
-            contentContainerStyle={styles.listContainer}
-          />
-        )}
-      </View>
-
-      {/* Action bar */}
-      <View style={styles.actionArea}>
-        {isSessionActive ? (
-          <Text style={styles.sessionLabelActive}>
-            Active Session:{' '}
-            <Text style={styles.activeRoomName}>{activeLocation.name}</Text>
-          </Text>
-        ) : (
-          <Text style={styles.sessionLabelInactive}>No Active Location Session</Text>
-        )}
-
-        {isSessionActive && (
-          <Text style={styles.activeRoomLabel}>
-            Selected Room:{' '}
-            <Text style={styles.activeRoomName}>{activeRoom || 'None'}</Text>
-          </Text>
-        )}
-
-        {testMode === 'inline' && testActive && !isNativeProvider ? (
-          <View style={styles.progressContainer}>
-            <View style={styles.progressHeader}>
-              <Text style={styles.progressPhase}>{testPhase || 'TESTING...'}</Text>
-              <TouchableOpacity onPress={cancelSpeedtest} style={styles.cancelLink}>
-                <Text style={styles.cancelLinkText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.liveSpeedText}>
-              {currentSpeed > 0 ? currentSpeed.toFixed(1) : '--.-'}
-              <Text style={styles.liveSpeedUnit}> Mbps</Text>
-            </Text>
-            <ActivityIndicator size="small" color="#28A745" style={{ marginTop: 5 }} />
+            <Text style={styles.sectionTitle}>History Log</Text>
           </View>
-        ) : (
-          <View style={styles.actionButtons}>
-            {isSessionActive ? (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.btnSpeed, (!activeRoom || loading) && styles.btnDisabled]}
-                onPress={() => executeFastTest('location')}
-                disabled={!activeRoom || loading}
-              >
-                <Text style={styles.actionBtnText}>Location Test</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.btnQuick, loading && styles.btnDisabled]}
-                onPress={() => executeFastTest('quick')}
-                disabled={loading}
-              >
-                <Text style={styles.actionBtnText}>Quick Test</Text>
-              </TouchableOpacity>
-            )}
-
-            {isSessionActive ? (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.btnEndSession, loading && styles.btnDisabled]}
-                onPress={() => { setActiveLocationId(null); setActiveRoom(null); }}
-                disabled={loading}
-              >
-                <Text style={styles.actionBtnText}>End Session</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.actionBtn, styles.btnStartSession, loading && styles.btnDisabled]}
-                onPress={() => setSessionModalVisible(true)}
-                disabled={loading}
-              >
-                <Text style={styles.actionBtnText}>Start Session</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-      </View>
-
-      {/* Inline Background WebView removed from here, successfully lifted to screen root to bypass rendering locks */}
-
-      {/* Speedtest Modal */}
-      <Modal visible={testModalVisible} animationType="slide" onRequestClose={cancelSpeedtest}>
-        <SafeAreaView style={styles.modalContainer}>
-          {isNativeProvider ? (
-            <SpeedCheckerScreen
-              onResult={onNativeResult}
-              onCancel={cancelSpeedtest}
-            />
+          {history.length === 0 ? (
+            <Text style={styles.emptyText}>No data yet. Select a room and run a test.</Text>
           ) : (
-            <>
-              <View style={styles.modalHeader}>
-                <View>
-                  <Text style={styles.modalTitle}>Speed Test — {activeRoomForTest}</Text>
-                  <Text style={styles.modalSubtitle}>{provider ? provider.label : ''}</Text>
+            <FlatList
+              data={history}
+              keyExtractor={(item) => item.id}
+              renderItem={renderHistoryItem}
+              contentContainerStyle={styles.listContainer}
+            />
+          )}
+        </View>
+
+        {/* Action bar */}
+        <View style={styles.actionArea}>
+          {isSessionActive ? (
+            <Text style={styles.sessionLabelActive}>
+              Active Session:{' '}
+              <Text style={styles.activeRoomName}>{activeLocation.name}</Text>
+            </Text>
+          ) : (
+            <Text style={styles.sessionLabelInactive}>No Active Location Session</Text>
+          )}
+
+          {isSessionActive && (
+            <Text style={styles.activeRoomLabel}>
+              Selected Room:{' '}
+              <Text style={styles.activeRoomName}>{activeRoom || 'None'}</Text>
+            </Text>
+          )}
+
+          {testMode === 'inline' && testActive && !isNativeProvider ? (
+            <View style={styles.progressContainer}>
+              <View style={styles.progressHeader}>
+                <Text style={styles.progressPhase}>{testPhase || 'TESTING...'}</Text>
+                <TouchableOpacity onPress={cancelSpeedtest} style={styles.cancelLink}>
+                  <Text style={styles.cancelLinkText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.liveSpeedText}>
+                {currentSpeed > 0 ? currentSpeed.toFixed(1) : '--.-'}
+                <Text style={styles.liveSpeedUnit}> Mbps</Text>
+              </Text>
+              <ActivityIndicator size="small" color="#28A745" style={{ marginTop: 5 }} />
+            </View>
+          ) : (
+            <View style={styles.actionButtons}>
+              {isSessionActive ? (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.btnSpeed, (!activeRoom || loading) && styles.btnDisabled]}
+                  onPress={() => executeFastTest('location')}
+                  disabled={!activeRoom || loading}
+                >
+                  <Text style={styles.actionBtnText}>Run Test</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.btnQuick, loading && styles.btnDisabled]}
+                  onPress={() => executeFastTest('quick')}
+                  disabled={loading}
+                >
+                  <Text style={styles.actionBtnText}>Quick Test</Text>
+                </TouchableOpacity>
+              )}
+
+              {isSessionActive ? (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.btnEndSession, loading && styles.btnDisabled]}
+                  onPress={() => { setActiveLocationId(null); setActiveRoom(null); }}
+                  disabled={loading}
+                >
+                  <Text style={styles.actionBtnText}>End Session</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.btnStartSession, loading && styles.btnDisabled]}
+                  onPress={() => setSessionModalVisible(true)}
+                  disabled={loading}
+                >
+                  <Text style={styles.actionBtnText}>Test Location</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Inline Background WebView removed from here, successfully lifted to screen root to bypass rendering locks */}
+
+        {/* Speedtest Modal */}
+        <Modal visible={testModalVisible} animationType="slide" onRequestClose={cancelSpeedtest}>
+          <SafeAreaView style={styles.modalContainer}>
+            {isNativeProvider ? (
+              <SpeedCheckerScreen
+                onResult={onNativeResult}
+                onCancel={cancelSpeedtest}
+              />
+            ) : (
+              <>
+                <View style={styles.modalHeader}>
+                  <View>
+                    <Text style={styles.modalTitle}>Speed Test — {activeRoomForTest}</Text>
+                    <Text style={styles.modalSubtitle}>{provider ? provider.label : ''}</Text>
+                  </View>
+                  <TouchableOpacity onPress={cancelSpeedtest} style={styles.modalCloseBtn}>
+                    <Text style={styles.modalCloseBtnText}>✕ Cancel</Text>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={cancelSpeedtest} style={styles.modalCloseBtn}>
+                {provider && testMode === 'modal' && (
+                  <WebView
+                    ref={webViewRef}
+                    source={{ uri: provider.url }}
+                    onLoad={startPolling}
+                    onMessage={onWebViewMessage}
+                    javaScriptEnabled
+                    domStorageEnabled
+                    style={{ flex: 1 }}
+                  />
+                )}
+              </>
+            )}
+          </SafeAreaView>
+        </Modal>
+
+        {/* Rooms (Legacy static rooms mode - disabled if sessions exist) */}
+        {!isSessionActive && rooms && rooms.length > 0 && (
+          <View style={styles.bottomHalf}>
+            <Text style={styles.sectionTitle}>Locations</Text>
+            <View style={styles.roomsGrid}>
+              {rooms.map((room, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.roomButton, activeRoom === room && styles.roomButtonActive]}
+                  onPress={() => setActiveRoom(room)}
+                >
+                  <Text style={styles.roomButtonText}>{room}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+        {/* Session Selection Modal */}
+        <Modal visible={sessionModalVisible} animationType="slide" transparent={true}>
+          <View style={styles.sessionModalOverlay}>
+            <View style={styles.sessionModalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Location Session</Text>
+                <TouchableOpacity onPress={() => setSessionModalVisible(false)} style={styles.modalCloseBtn}>
                   <Text style={styles.modalCloseBtnText}>✕ Cancel</Text>
                 </TouchableOpacity>
               </View>
-              {provider && testMode === 'modal' && (
-                <WebView
-                  ref={webViewRef}
-                  source={{ uri: provider.url }}
-                  onLoad={startPolling}
-                  onMessage={onWebViewMessage}
-                  javaScriptEnabled
-                  domStorageEnabled
-                  style={{ flex: 1 }}
+              {(!locations || locations.length === 0) ? (
+                <Text style={styles.emptyText}>No saved locations. Go to the Report tab to create one.</Text>
+              ) : (
+                <FlatList
+                  data={locations}
+                  keyExtractor={(item) => item.id}
+                  contentContainerStyle={{ padding: 16 }}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      style={styles.sessionListItem}
+                      onPress={() => {
+                        setActiveLocationId(item.id);
+                        setActiveRoom(null);
+                        setSessionModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.sessionListItemText}>{item.name}</Text>
+                      <Text style={styles.sessionListSubtext}>{item.rooms.length} rooms defined</Text>
+                    </TouchableOpacity>
+                  )}
                 />
               )}
-            </>
-          )}
-        </SafeAreaView>
-      </Modal>
-
-      {/* Rooms (Legacy static rooms mode - disabled if sessions exist) */}
-      {!isSessionActive && rooms && rooms.length > 0 && (
-        <View style={styles.bottomHalf}>
-          <Text style={styles.sectionTitle}>Locations</Text>
-          <View style={styles.roomsGrid}>
-            {rooms.map((room, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.roomButton, activeRoom === room && styles.roomButtonActive]}
-                onPress={() => setActiveRoom(room)}
-              >
-                <Text style={styles.roomButtonText}>{room}</Text>
-              </TouchableOpacity>
-            ))}
+            </View>
           </View>
-        </View>
-      )}
-      {/* Session Selection Modal */}
-      <Modal visible={sessionModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.sessionModalOverlay}>
-          <View style={styles.sessionModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Location Session</Text>
-              <TouchableOpacity onPress={() => setSessionModalVisible(false)} style={styles.modalCloseBtn}>
-                <Text style={styles.modalCloseBtnText}>✕ Cancel</Text>
+        </Modal>
+
+        {/* Rooms (Only visible during an active session) */}
+        {isSessionActive && (
+          <View style={styles.bottomHalf}>
+            <Text style={styles.sectionTitle}>Rooms for {activeLocation.name}</Text>
+            <View style={styles.addRoomRow}>
+              <TextInput
+                style={styles.input}
+                placeholder="New Room (e.g. Kitchen)"
+                placeholderTextColor="#AAA"
+                value={newRoom}
+                onChangeText={setNewRoom}
+              />
+              <TouchableOpacity
+                style={styles.addButton}
+                onPress={() => {
+                  if (newRoom.trim()) {
+                    updateActiveLocation({ rooms: [...rooms, newRoom.trim()] });
+                    setNewRoom('');
+                  }
+                }}
+              >
+                <Text style={styles.addButtonText}>Add</Text>
               </TouchableOpacity>
             </View>
-            {(!locations || locations.length === 0) ? (
-              <Text style={styles.emptyText}>No saved locations. Go to the Report tab to create one.</Text>
-            ) : (
-              <FlatList
-                data={locations}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={{ padding: 16 }}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.sessionListItem}
-                    onPress={() => {
-                      setActiveLocationId(item.id);
-                      setActiveRoom(null);
-                      setSessionModalVisible(false);
-                    }}
-                  >
-                    <Text style={styles.sessionListItemText}>{item.name}</Text>
-                    <Text style={styles.sessionListSubtext}>{item.rooms.length} rooms defined</Text>
-                  </TouchableOpacity>
-                )}
-              />
+            <View style={styles.roomsGrid}>
+              {rooms.map((room, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.roomButton, activeRoom === room && styles.roomButtonActive]}
+                  onPress={() => setActiveRoom(room)}
+                >
+                  <Text style={styles.roomButtonText}>{room}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {loading && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#007BFF" />
+                <Text style={styles.loadingText}>Running Test...</Text>
+              </View>
             )}
           </View>
-        </View>
-      </Modal>
-
-      {/* Rooms (Only visible during an active session) */}
-      {isSessionActive && (
-        <View style={styles.bottomHalf}>
-          <Text style={styles.sectionTitle}>Rooms for {activeLocation.name}</Text>
-          <View style={styles.addRoomRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="New Room (e.g. Kitchen)"
-              placeholderTextColor="#AAA"
-              value={newRoom}
-              onChangeText={setNewRoom}
-            />
-            <TouchableOpacity
-              style={styles.addButton}
-              onPress={() => {
-                if (newRoom.trim()) {
-                  updateActiveLocation({ rooms: [...rooms, newRoom.trim()] });
-                  setNewRoom('');
-                }
-              }}
-            >
-              <Text style={styles.addButtonText}>Add</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.roomsGrid}>
-            {rooms.map((room, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.roomButton, activeRoom === room && styles.roomButtonActive]}
-                onPress={() => setActiveRoom(room)}
-              >
-                <Text style={styles.roomButtonText}>{room}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {loading && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color="#007BFF" />
-              <Text style={styles.loadingText}>Running Test...</Text>
-            </View>
-          )}
-        </View>
-      )}
+        )}
 
       </View>
     </View>

@@ -7,6 +7,7 @@ import SignalScreen from './src/screens/SignalScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import { DEFAULT_PROVIDER } from './src/speedtest/providers';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const TABS = [
   { id: 'signal', label: 'Speed Test', icon: 'speedometer-outline', iconActive: 'speedometer' },
@@ -46,24 +47,31 @@ export default function App() {
   const [speedtestProvider, setSpeedtestProvider] = useState(DEFAULT_PROVIDER);
 
   // --- Global Locations State ---
-  const [locations, setLocations] = useState([
-    {
-      id: 'default',
-      name: 'Default Location',
-      rooms: ['Living Room', 'Garage'],
-      history: [],
-      reportData: {
-        locationName: '',
-        numRooms: '',
-        roomNames: '',
-        wifiPlan: '',
-        hardwareType: 'separate',
-        modemName: '',
-        routerName: '',
-        comboName: ''
+  const [locations, setLocations] = useState([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@wifi_locations');
+        if (stored) {
+          setLocations(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.warn('Failed to load locations', err);
+      } finally {
+        setIsLoaded(true);
       }
+    };
+    loadData();
+  }, []);
+
+  React.useEffect(() => {
+    if (isLoaded) {
+      AsyncStorage.setItem('@wifi_locations', JSON.stringify(locations)).catch(console.warn);
     }
-  ]);
+  }, [locations, isLoaded]);
+
   const [activeLocationId, setActiveLocationId] = useState(null);
 
   const activeLocation = locations.find(loc => loc.id === activeLocationId);
