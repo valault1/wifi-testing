@@ -10,22 +10,47 @@
 // --- Ookla (speedtest.net) ---
 const OOKLA_POLL_JS = `
 (function() {
-  var speedEl = document.querySelector('.result-data-large.number') ||
-                document.querySelector('#speed-value') ||
-                document.querySelector('[data-testid="download-speed"]');
-  var unitEl  = document.querySelector('.result-data-large.unit') ||
-                document.querySelector('#speed-units');
-  var doneEl  = document.querySelector('#share-button') ||
-                document.querySelector('.result-tile') ||
-                document.querySelector('[data-testid="result-tile"]') ||
-                document.querySelector('.share-wrapper');
-  if (speedEl && speedEl.innerText && parseFloat(speedEl.innerText) > 0 && doneEl) {
-    var raw  = parseFloat(speedEl.innerText);
-    var unit = unitEl ? (unitEl.innerText || 'Mbps').trim() : 'Mbps';
-    var mbps = raw;
-    if (unit === 'Gbps') mbps = raw * 1000;
-    if (unit === 'Kbps') mbps = raw / 1000;
-    window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'FINISHED', mbps: mbps }));
+  // 1. Auto-start if 'GO' button is visible
+  var startBtn = document.querySelector('.js-start-test');
+  if (startBtn && startBtn.offsetParent !== null) {
+    startBtn.click();
+    window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'STARTING' }));
+  }
+
+  // 2. Poll for live progress
+  var speedEl = document.querySelector('.gauge-speed-text');
+  var dlEl = document.querySelector('.download-speed');
+  var ulEl = document.querySelector('.upload-speed');
+  
+  if (speedEl && speedEl.innerText) {
+    var val = parseFloat(speedEl.innerText);
+    if (!isNaN(val) && val > 0) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ 
+        status: 'PROGRESS', 
+        mbps: val,
+        phase: (dlEl && dlEl.innerText && dlEl.innerText !== '—') ? 'UPLOAD' : 'DOWNLOAD'
+      }));
+    }
+  }
+
+  // 3. Detect completion (URL change or result ID link)
+  var resultIdLink = document.querySelector('a[href^="/result/"]');
+  var isDone = resultIdLink || 
+               window.location.href.indexOf('/result/') !== -1 ||
+               document.querySelector('.result-tile') || 
+               document.querySelector('.share-wrapper');
+               
+  if (dlEl && dlEl.innerText && dlEl.innerText !== '—' && 
+      ulEl && ulEl.innerText && ulEl.innerText !== '—' && isDone) {
+    
+    var dl = parseFloat(dlEl.innerText.replace(/[^0-9.]/g, ''));
+    var ul = parseFloat(ulEl.innerText.replace(/[^0-9.]/g, ''));
+    
+    window.ReactNativeWebView.postMessage(JSON.stringify({ 
+      status: 'FINISHED', 
+      mbps: dl,
+      upload: ul
+    }));
   }
 })();
 `;
