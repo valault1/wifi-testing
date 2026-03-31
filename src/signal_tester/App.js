@@ -45,12 +45,58 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('signal');
   const [speedtestProvider, setSpeedtestProvider] = useState(DEFAULT_PROVIDER);
 
+  // --- Global Locations State ---
+  const [locations, setLocations] = useState([
+    {
+      id: 'default',
+      name: 'Default Location',
+      rooms: ['Living Room', 'Garage'],
+      history: [],
+      reportData: {
+        locationName: '',
+        numRooms: '',
+        roomNames: '',
+        wifiPlan: '',
+        hardwareType: 'separate',
+        modemName: '',
+        routerName: '',
+        comboName: ''
+      }
+    }
+  ]);
+  const [activeLocationId, setActiveLocationId] = useState(null);
+
+  const activeLocation = locations.find(loc => loc.id === activeLocationId);
+
+  const updateActiveLocation = (updates) => {
+    setLocations(prev => prev.map(loc =>
+      loc.id === activeLocationId ? { ...loc, ...updates } : loc
+    ));
+  };
+
   const renderScreen = () => {
     switch (activeTab) {
       case 'signal':
-        return <SignalScreen speedtestProviderKey={speedtestProvider} />;
+        return (
+          <SignalScreen
+            speedtestProviderKey={speedtestProvider}
+            activeLocation={activeLocation}
+            updateActiveLocation={updateActiveLocation}
+            locations={locations}
+            setActiveLocationId={setActiveLocationId}
+          />
+        );
       case 'report':
-        return <ReportScreen />;
+        return (
+          <ReportScreen
+            locations={locations}
+            setLocations={setLocations}
+            activeLocationId={activeLocationId}
+            setActiveLocationId={setActiveLocationId}
+            activeLocation={activeLocation}
+            updateActiveLocation={updateActiveLocation}
+          />
+        );
       case 'settings':
         return (
           <SettingsScreen

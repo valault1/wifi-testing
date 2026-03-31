@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function ReportScreen() {
+export default function ReportScreen({
+    locations,
+    setLocations
+}) {
     const [locationName, setLocationName] = useState('');
     const [numRooms, setNumRooms] = useState('');
     const [roomNames, setRoomNames] = useState('');
@@ -21,6 +24,45 @@ export default function ReportScreen() {
     const [modemName, setModemName] = useState('');
     const [routerName, setRouterName] = useState('');
     const [comboName, setComboName] = useState('');
+
+    const handleSaveLocation = () => {
+        if (!locationName) {
+            Alert.alert('Missing Name', 'Please enter a Location Name to save this session.');
+            return;
+        }
+
+        const roomList = roomNames.split(',').map(r => r.trim()).filter(r => r);
+        const newId = Date.now().toString();
+
+        const newLocation = {
+            id: newId,
+            name: locationName,
+            rooms: roomList.length > 0 ? roomList : ['Living Room', 'Kitchen', 'Bedroom'], // Default rooms if none provided
+            history: [],
+            reportData: {
+                locationName,
+                numRooms,
+                roomNames,
+                wifiPlan,
+                hardwareType,
+                modemName,
+                routerName,
+                comboName
+            }
+        };
+
+        setLocations(prev => [...prev, newLocation]);
+        Alert.alert('Location Saved', `${locationName} has been saved. You can now start a session for it on the Speed Test tab!`);
+
+        // Optionally clear form
+        setLocationName('');
+        setNumRooms('');
+        setRoomNames('');
+        setWifiPlan('');
+        setModemName('');
+        setRouterName('');
+        setComboName('');
+    };
 
     const handleCreateReport = () => {
         if (!locationName || !numRooms || !roomNames || !wifiPlan) {
@@ -96,10 +138,10 @@ export default function ReportScreen() {
                         onChangeText={setNumRooms}
                     />
 
-                    <Text style={styles.label}>Room Names</Text>
+                    <Text style={styles.label}>Room Names (comma separated)</Text>
                     <TextInput
                         style={[styles.input, styles.textArea]}
-                        placeholder="e.g. Living Room, Kitchen, Master Bedroom..."
+                        placeholder="e.g. Living Room, Kitchen, Master Bedroom"
                         multiline
                         numberOfLines={3}
                         textAlignVertical="top"
@@ -165,6 +207,11 @@ export default function ReportScreen() {
                     )}
                 </View>
 
+                <TouchableOpacity style={styles.saveBtn} onPress={handleSaveLocation}>
+                    <Ionicons name="location" size={20} color="#FFF" />
+                    <Text style={styles.saveBtnText}>Save Location to List</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity style={styles.submitBtn} onPress={handleCreateReport}>
                     <Text style={styles.submitBtnText}>Generate Report Preview</Text>
                     <Ionicons name="arrow-forward" size={20} color="#FFF" />
@@ -206,6 +253,45 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 4 },
         elevation: 3,
         marginBottom: 24,
+    },
+    locationSelector: {
+        flexDirection: 'row',
+        marginBottom: 8,
+    },
+    locPill: {
+        backgroundColor: '#E9ECEF',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        marginRight: 12,
+        borderWidth: 1,
+        borderColor: '#CED4DA',
+        justifyContent: 'center',
+    },
+    locPillActive: {
+        backgroundColor: '#007BFF',
+        borderColor: '#0056b3',
+    },
+    locPillText: {
+        color: '#495057',
+        fontWeight: 'bold',
+        fontSize: 14,
+    },
+    locPillTextActive: {
+        color: '#FFF',
+    },
+    locPillAdd: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        borderColor: '#007BFF',
+        borderStyle: 'dashed',
+    },
+    locPillTextAdd: {
+        color: '#007BFF',
+        fontWeight: 'bold',
+        marginLeft: 4,
+        fontSize: 14,
     },
     label: {
         fontSize: 14,
@@ -279,6 +365,21 @@ const styles = StyleSheet.create({
     },
     hardwareIcon: {
         marginRight: 4,
+    },
+    saveBtn: {
+        backgroundColor: '#6f42c1',
+        borderRadius: 12,
+        paddingVertical: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 12,
+        gap: 8,
+    },
+    saveBtnText: {
+        color: '#FFF',
+        fontSize: 18,
+        fontWeight: 'bold',
     },
     submitBtn: {
         backgroundColor: '#28A745',

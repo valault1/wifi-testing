@@ -21,13 +21,17 @@ import { generatePdfHtml } from '../pdfGenerator';
 import { PROVIDERS } from '../speedtest/providers';
 import SpeedCheckerScreen from './SpeedCheckerScreen';
 
-export default function SignalScreen({ speedtestProviderKey }) {
-  const [rooms, setRooms] = useState(['Living Room', 'Garage']);
+export default function SignalScreen({ speedtestProviderKey, activeLocation, updateActiveLocation, locations, setActiveLocationId }) {
+  const isSessionActive = !!activeLocation;
+  // Rely on global state for these:
+  const rooms = activeLocation?.rooms || [];
+  const history = activeLocation?.history || [];
+
   const [newRoom, setNewRoom] = useState('');
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
   const [testModalVisible, setTestModalVisible] = useState(false);
+  const [sessionModalVisible, setSessionModalVisible] = useState(false);
   const [activeRoomForTest, setActiveRoomForTest] = useState(null);
 
   // New states for inline progress and active provider
@@ -104,7 +108,7 @@ export default function SignalScreen({ speedtestProviderKey }) {
           resultEntry.extras = [`↑ ${data.upload.toFixed(1)} Mbps`];
         }
 
-        setHistory((prev) => [resultEntry, ...prev]);
+        updateActiveLocation({ history: [resultEntry, ...history] });
         Alert.alert('Test Complete', `Result for ${activeRoomForTest}: ${data.mbps.toFixed(1)} Mbps ${data.upload ? ('(↑ ' + data.upload.toFixed(1) + ')') : ''}`);
       }
     } catch (_) {
@@ -123,26 +127,24 @@ export default function SignalScreen({ speedtestProviderKey }) {
     if (ping) parts.push(`Ping: ${ping.toFixed(0)} ms`);
     if (upload) parts.push(`↑ ${upload.toFixed(1)} Mbps`);
 
-    setHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        room: activeRoomForTest,
-        type: 'Speedtest',
-        speed: parts[0],
-        extras: parts.slice(1),
-        provider: provider.label,
-        timestamp: new Date().toLocaleTimeString(),
-      },
-      ...prev,
-    ]);
-  }, [activeRoomForTest, provider]);
+    const resultEntry = {
+      id: Date.now().toString(),
+      room: activeRoomForTest,
+      type: 'Speedtest',
+      speed: parts[0],
+      extras: parts.slice(1),
+      provider: provider?.label,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+    updateActiveLocation({ history: [resultEntry, ...history] });
+  }, [activeRoomForTest, provider, history, updateActiveLocation]);
 
-  const executeFastTest = () => {
-    if (!activeRoom) {
+  const executeFastTest = (mode) => {
+    if (mode === 'location' && !activeRoom) {
       Alert.alert('No Room Selected', 'Please select a room from the grid first.');
       return;
     }
-    setActiveRoomForTest(activeRoom);
+    setActiveRoomForTest(mode === 'quick' ? 'No Location' : activeRoom);
     setActiveProviderKey('fastcom');
     setTestMode('inline');
     setLoading(true);
@@ -150,11 +152,7 @@ export default function SignalScreen({ speedtestProviderKey }) {
   };
 
   const executeOoklaTest = () => {
-    if (!activeRoom) {
-      Alert.alert('No Room Selected', 'Please select a room from the grid first.');
-      return;
-    }
-    setActiveRoomForTest(activeRoom);
+    setActiveRoomForTest(activeRoom || 'No Location');
     setActiveProviderKey('ookla');
     setTestMode('modal');
     setLoading(true);
@@ -204,16 +202,15 @@ export default function SignalScreen({ speedtestProviderKey }) {
       Alert.alert('Scan Error', 'Make sure Location is enabled. Android limits scans to 4 times per 2 minutes.');
     }
 
-    setHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        room: activeRoom,
-        type: 'Signal',
-        bands: bandData,
-        timestamp: new Date().toLocaleTimeString(),
-      },
-      ...prev,
-    ]);
+    const resultEntry = {
+      id: Date.now().toString(),
+      room: activeRoom,
+      type: 'Signal',
+      bands: bandData,
+      timestamp: new Date().toLocaleTimeString(),
+    };
+
+    updateActiveLocation({ history: [resultEntry, ...history] });
     setLoading(false);
   };
 
@@ -295,10 +292,21 @@ export default function SignalScreen({ speedtestProviderKey }) {
 
       {/* Action bar */}
       <View style={styles.actionArea}>
-        <Text style={styles.activeRoomLabel}>
-          Active Room:{' '}
-          <Text style={styles.activeRoomName}>{activeRoom || 'None Selected'}</Text>
-        </Text>
+        {isSessionActive ? (
+          <Text style={styles.sessionLabelActive}>
+            Active Session:{' '}
+            <Text style={styles.activeRoomName}>{activeLocation.name}</Text>
+          </Text>
+        ) : (
+          <Text style={styles.sessionLabelInactive}>No Active Location Session</Text>
+        )}
+
+        {isSessionActive && (
+          <Text style={styles.activeRoomLabel}>
+            Selected Room:{' '}
+            <Text style={styles.activeRoomName}>{activeRoom || 'None'}</Text>
+          </Text>
+        )}
 
         {testMode === 'inline' && testActive && !isNativeProvider ? (
           <View style={styles.progressContainer}>
@@ -317,26 +325,56 @@ export default function SignalScreen({ speedtestProviderKey }) {
         ) : (
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={[styles.actionBtn, styles.btnSignal, (!activeRoom || loading) && styles.btnDisabled]}
+              style={[styles.actionBtn, styles.btnSignal, (loading || (isSessionActive && !activeRoom)) && styles.btnDisabled]}
               onPress={executeSignalScan}
-              disabled={!activeRoom || loading}
+              disabled={loading || (isSessionActive && !activeRoom)}
             >
               <Text style={styles.actionBtnText}>Scan Signal</Text>
             </TouchableOpacity>
+
+            {isSessionActive ? (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.btnSpeed, (!activeRoom || loading) && styles.btnDisabled]}
+                onPress={() => executeFastTest('location')}
+                disabled={!activeRoom || loading}
+              >
+                <Text style={styles.actionBtnText}>Location Test</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.btnQuick, loading && styles.btnDisabled]}
+                onPress={() => executeFastTest('quick')}
+                disabled={loading}
+              >
+                <Text style={styles.actionBtnText}>Quick Test</Text>
+              </TouchableOpacity>
+            )}
+
             <TouchableOpacity
-              style={[styles.actionBtn, styles.btnSpeed, (!activeRoom || loading) && styles.btnDisabled]}
-              onPress={executeFastTest}
-              disabled={!activeRoom || loading}
-            >
-              <Text style={styles.actionBtnText}>Fast.com</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.btnOokla, (!activeRoom || loading) && styles.btnDisabled]}
+              style={[styles.actionBtn, styles.btnOokla, loading && styles.btnDisabled]}
               onPress={executeOoklaTest}
-              disabled={!activeRoom || loading}
+              disabled={loading}
             >
               <Text style={styles.actionBtnText}>Ookla (Popup)</Text>
             </TouchableOpacity>
+
+            {isSessionActive ? (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.btnEndSession, loading && styles.btnDisabled]}
+                onPress={() => { setActiveLocationId(null); setActiveRoom(null); }}
+                disabled={loading}
+              >
+                <Text style={styles.actionBtnText}>End Session</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.btnStartSession, loading && styles.btnDisabled]}
+                onPress={() => setSessionModalVisible(true)}
+                disabled={loading}
+              >
+                <Text style={styles.actionBtnText}>Start Session</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -401,44 +439,85 @@ export default function SignalScreen({ speedtestProviderKey }) {
         </SafeAreaView>
       </Modal>
 
-      {/* Rooms */}
-      <View style={styles.bottomHalf}>
-        <Text style={styles.sectionTitle}>Locations</Text>
-        <View style={styles.addRoomRow}>
-          <TextInput
-            style={styles.input}
-            placeholder="New Room (e.g. Kitchen)"
-            placeholderTextColor="#AAA"
-            value={newRoom}
-            onChangeText={setNewRoom}
-          />
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => {
-              if (newRoom.trim()) { setRooms([...rooms, newRoom.trim()]); setNewRoom(''); }
-            }}
-          >
-            <Text style={styles.addButtonText}>Add</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.roomsGrid}>
-          {rooms.map((room, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[styles.roomButton, activeRoom === room && styles.roomButtonActive]}
-              onPress={() => setActiveRoom(room)}
-            >
-              <Text style={styles.roomButtonText}>{room}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#007BFF" />
-            <Text style={styles.loadingText}>Running Test...</Text>
+      {/* Session Selection Modal */}
+      <Modal visible={sessionModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.sessionModalOverlay}>
+          <View style={styles.sessionModalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Location Session</Text>
+              <TouchableOpacity onPress={() => setSessionModalVisible(false)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseBtnText}>✕ Cancel</Text>
+              </TouchableOpacity>
+            </View>
+            {(!locations || locations.length === 0) ? (
+              <Text style={styles.emptyText}>No saved locations. Go to the Report tab to create one.</Text>
+            ) : (
+              <FlatList
+                data={locations}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: 16 }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.sessionListItem}
+                    onPress={() => {
+                      setActiveLocationId(item.id);
+                      setActiveRoom(null);
+                      setSessionModalVisible(false);
+                    }}
+                  >
+                    <Text style={styles.sessionListItemText}>{item.name}</Text>
+                    <Text style={styles.sessionListSubtext}>{item.rooms.length} rooms defined</Text>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
           </View>
-        )}
-      </View>
+        </View>
+      </Modal>
+
+      {/* Rooms (Only visible during an active session) */}
+      {isSessionActive && (
+        <View style={styles.bottomHalf}>
+          <Text style={styles.sectionTitle}>Rooms for {activeLocation.name}</Text>
+          <View style={styles.addRoomRow}>
+            <TextInput
+              style={styles.input}
+              placeholder="New Room (e.g. Kitchen)"
+              placeholderTextColor="#AAA"
+              value={newRoom}
+              onChangeText={setNewRoom}
+            />
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => {
+                if (newRoom.trim()) {
+                  updateActiveLocation({ rooms: [...rooms, newRoom.trim()] });
+                  setNewRoom('');
+                }
+              }}
+            >
+              <Text style={styles.addButtonText}>Add</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.roomsGrid}>
+            {rooms.map((room, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.roomButton, activeRoom === room && styles.roomButtonActive]}
+                onPress={() => setActiveRoom(room)}
+              >
+                <Text style={styles.roomButtonText}>{room}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#007BFF" />
+              <Text style={styles.loadingText}>Running Test...</Text>
+            </View>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -474,22 +553,33 @@ const styles = StyleSheet.create({
   historyTime: { fontSize: 11, color: '#888', marginTop: 6, textAlign: 'right' },
 
   actionArea: { backgroundColor: '#E9ECEF', padding: 15, borderBottomWidth: 1, borderBottomColor: '#CCC' },
-  activeRoomLabel: { fontSize: 14, color: '#555', marginBottom: 10, textAlign: 'center' },
-  activeRoomName: { fontWeight: 'bold', color: '#000', fontSize: 16 },
+  activeRoomLabel: { fontSize: 13, color: '#555', marginBottom: 10, textAlign: 'center' },
+  sessionLabelActive: { fontSize: 15, color: '#007BFF', marginBottom: 2, textAlign: 'center', fontWeight: 'bold' },
+  sessionLabelInactive: { fontSize: 15, color: '#666', marginBottom: 10, textAlign: 'center', fontStyle: 'italic' },
+  activeRoomName: { fontWeight: 'bold', color: '#000', fontSize: 15 },
   actionButtons: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 },
   actionBtn: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, flexBasis: '48%', alignItems: 'center' },
   btnSignal: { backgroundColor: '#007BFF' },
   btnSpeed: { backgroundColor: '#28A745' },
+  btnQuick: { backgroundColor: '#6f42c1' },
   btnOokla: { backgroundColor: '#17A2B8' },
+  btnStartSession: { backgroundColor: '#FD7E14' },
+  btnEndSession: { backgroundColor: '#DC3545' },
   btnDisabled: { backgroundColor: '#A0A0A0' },
   actionBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 13 },
 
   modalContainer: { flex: 1, backgroundColor: '#FFF' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E0E0E0', backgroundColor: '#F8F9FA' },
-  modalTitle: { fontSize: 16, fontWeight: '700', color: '#333' },
-  modalSubtitle: { fontSize: 12, color: '#888', marginTop: 2 },
-  modalCloseBtn: { backgroundColor: '#DC3545', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  modalCloseBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#000' },
+  modalSubtitle: { fontSize: 14, color: '#555', marginTop: 2 },
+  modalCloseBtn: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#E0E0E0', borderRadius: 8 },
+  modalCloseBtnText: { color: '#333', fontWeight: 'bold' },
+
+  sessionModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  sessionModalContent: { backgroundColor: '#FFF', borderRadius: 16, overflow: 'hidden', maxHeight: '80%' },
+  sessionListItem: { paddingVertical: 16, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  sessionListItemText: { fontSize: 16, fontWeight: 'bold', color: '#111' },
+  sessionListSubtext: { fontSize: 13, color: '#666', marginTop: 2 },
 
   bottomHalf: { flex: 1, padding: 15, backgroundColor: '#FFF' },
   addRoomRow: { flexDirection: 'row', marginBottom: 12 },
