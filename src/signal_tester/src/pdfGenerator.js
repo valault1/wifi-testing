@@ -1,17 +1,41 @@
 function getSignalBarsHtml(bars) {
   let html = '<div style="display: flex; gap: 2px; align-items: end; height: 16px;">';
   const heights = ['6px', '10px', '14px', '16px'];
-  
+
   for (let i = 0; i < 4; i++) {
     const bgColor = i < bars ? 'var(--primary)' : '#cbd5e1';
     html += `<div style="width: 4px; height: ${heights[i]}; background: ${bgColor};"></div>`;
   }
-  
+
   html += '</div>';
   return html;
 }
 
-function generatePdfHtml(reportData) {
+function generatePdfHtml(location) {
+  const { name = 'Unnamed Location', reportData = {}, history = [] } = location || {};
+
+  const hardwareDisplay = reportData.hardwareType === 'separate'
+    ? `Modem: ${reportData.modemName || 'N/A'} <br/> Router: ${reportData.routerName || 'N/A'}`
+    : `Combo: ${reportData.comboName || 'N/A'}`;
+
+  // Helper to format history item details
+  const formatHistoryDetails = (item) => {
+    if (item.type === 'Speedtest') {
+      let details = `<strong>${item.speed}</strong>`;
+      if (item.extras && item.extras.length > 0) {
+        details += `<br/><span style="color: #64748b; font-size: 0.85em;">${item.extras.join(' | ')}</span>`;
+      }
+      return details;
+    } else if (item.type === 'Signal') {
+      let details = '';
+      if (item.bands) {
+        details = Object.entries(item.bands).map(([band, val]) => `${band}: ${val}`).join('<br/>');
+      }
+      return `<span style="color: #64748b; font-size: 0.85em;">${details}</span>`;
+    }
+    return 'N/A';
+  };
+
   return `
     <html>
       <head>
@@ -24,7 +48,6 @@ function generatePdfHtml(reportData) {
             --text-muted: #64748b;
             --primary: #3b82f6;
             --radius-lg: 0.5rem;
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
           }
           body { 
             font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; 
@@ -42,6 +65,8 @@ function generatePdfHtml(reportData) {
           .header-section {
             text-align: center;
             margin-bottom: 3rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 20px;
           }
           .hero-badge {
             background: #e2e8f0;
@@ -54,223 +79,146 @@ function generatePdfHtml(reportData) {
             display: inline-block;
           }
           h1 {
-            font-size: 2.5rem;
+            font-size: 2.2rem;
             margin-bottom: 0.5rem;
             letter-spacing: -0.02em;
             color: var(--text-main);
             margin-top: 0;
           }
           .subtitle {
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--text-muted);
             max-width: 600px;
             margin: 0 auto;
           }
-          .report-card {
-            background: var(--bg-surface);
-            border-radius: var(--radius-lg);
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-          }
-          .report-header {
-            padding: 2rem;
-            border-bottom: 1px solid #e2e8f0;
+          .property-details {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-          }
-          .report-header h2 {
-            font-size: 1.5rem;
-            margin: 0 0 0.25rem 0;
-          }
-          .report-header p {
-            color: var(--text-muted);
-            margin: 0;
-          }
-          .status-badge {
-            background: rgba(34, 197, 94, 0.1);
-            color: rgb(21, 128, 61);
-            padding: 0.5rem 1rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-          .status-badge svg {
-            width: 18px;
-            height: 18px;
-          }
-          .report-body {
-            padding: 2rem;
-          }
-          .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1.5rem;
-            margin-bottom: 3rem;
-          }
-          .stat-card {
             background: #f8fafc;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            text-align: center;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 40px;
+            border: 1px solid #e2e8f0;
           }
-          .stat-label {
-            color: var(--text-muted);
-            font-size: 0.875rem;
-            font-weight: 600;
+          .prop-col {
+            flex: 1;
+          }
+          .prop-label {
+            font-size: 0.8rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin: 0 0 0.5rem 0;
+            color: #64748b;
+            font-weight: bold;
+            margin-bottom: 4px;
           }
-          .stat-value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--text-main);
-          }
-          .stat-value .unit {
-            font-size: 1rem;
-            color: var(--text-muted);
+          .prop-value {
+            font-size: 1.1rem;
+            color: #0f172a;
             font-weight: 500;
-          }
-          .stat-value.highlight {
-            color: var(--primary);
           }
           h3 {
             font-size: 1.25rem;
             margin: 0 0 1rem 0;
-          }
-          .table-wrapper {
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            overflow: hidden;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 8px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
             text-align: left;
+            margin-top: 10px;
           }
           thead {
             background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
+            border-bottom: 2px solid #e2e8f0;
           }
           th {
-            padding: 1rem;
+            padding: 12px;
             font-weight: 600;
             color: var(--text-muted);
             font-size: 0.875rem;
           }
           td {
-            padding: 1rem;
-          }
-          tr {
+            padding: 14px 12px;
             border-bottom: 1px solid #e2e8f0;
-            page-break-inside: avoid;
           }
-          tr:last-child {
-            border-bottom: none;
+          .room-cell {
+            font-weight: bold;
+            color: #0f172a;
           }
-          .location-cell {
-            font-weight: 500;
+          .type-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: #fff;
+            background-color: #3b82f6;
           }
-          .rating-excellent {
-            color: var(--primary);
-            font-weight: 600;
+          .type-badge.signal {
+            background-color: #10b981;
           }
-          .rating-good {
-            color: #64748b;
-            font-weight: 600;
+          .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+            font-style: italic;
           }
           
           @media print {
-            @page {
-              margin: 40px;
-            }
-            body { 
-              padding: 0; 
-              background: white;
-            }
-            .stats-grid {
-              display: flex;
-              justify-content: space-between;
-            }
-            .stat-card {
-              flex: 1;
-              margin: 0 0.5rem;
-            }
-            .stat-card:first-child { margin-left: 0; }
-            .stat-card:last-child { margin-right: 0; }
+            @page { margin: 40px; }
+            body { padding: 0; background: white; }
           }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header-section">
-            <div class="hero-badge">Coverage Report</div>
-            <h1>Coverage Assessment</h1>
-            <p class="subtitle">
-              Detailed coverage report for the property during the assessment.
-            </p>
+            <div class="hero-badge">WiFi Coverage & Speed Report</div>
+            <h1>${name}</h1>
+            <p class="subtitle">Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
           </div>
 
-          <div class="report-card">
-            <div class="report-header">
-              <div>
-                <h2>${reportData.customerName}</h2>
-                <p>Tested on: ${reportData.testDate} &bull; ${reportData.homeSize}</p>
-              </div>
-              <div class="status-badge">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                ${reportData.status}
-              </div>
+          <div class="property-details">
+            <div class="prop-col">
+              <div class="prop-label">Number of Rooms</div>
+              <div class="prop-value">${reportData.numRooms || 'Undisclosed'}</div>
             </div>
-
-            <div class="report-body">
-              <div class="stats-grid">
-                <div class="stat-card">
-                  <p class="stat-label">Average Download</p>
-                  <div class="stat-value">${reportData.averageDownload} <span class="unit">Mbps</span></div>
-                </div>
-                <div class="stat-card">
-                  <p class="stat-label">Average Upload</p>
-                  <div class="stat-value">${reportData.averageUpload} <span class="unit">Mbps</span></div>
-                </div>
-                <div class="stat-card">
-                  <p class="stat-label">Dead Zones</p>
-                  <div class="stat-value highlight">${reportData.deadZones}</div>
-                </div>
-              </div>
-
-              <h3>Room-by-Room Analysis</h3>
-              <div class="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Location</th>
-                      <th>Signal Strength</th>
-                      <th>Speed Rating</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${reportData.rooms.map(room => `
-                      <tr>
-                        <td class="location-cell">${room.location}</td>
-                        <td>
-                          ${getSignalBarsHtml(room.signalBars)}
-                        </td>
-                        <td class="${room.speedRating === 'Excellent' ? 'rating-excellent' : 'rating-good'}">
-                          ${room.speedRating}
-                        </td>
-                      </tr>
-                    `).join('')}
-                  </tbody>
-                </table>
-              </div>
+            <div class="prop-col">
+              <div class="prop-label">WiFi Plan</div>
+              <div class="prop-value">${reportData.wifiPlan || 'Unknown'}</div>
+            </div>
+            <div class="prop-col">
+              <div class="prop-label">Hardware Type</div>
+              <div class="prop-value">${hardwareDisplay}</div>
             </div>
           </div>
+
+          <h3>Test History Log</h3>
+          ${history.length === 0 ? '<div class="empty-state">No speed tests or signal scans were recorded for this location.</div>' : `
+          <table>
+            <thead>
+              <tr>
+                <th>Room / Location</th>
+                <th>Test Type</th>
+                <th>Results & Details</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${history.map(item => `
+                <tr>
+                  <td class="room-cell">${item.room || 'Generic'}</td>
+                  <td>
+                    <span class="type-badge ${item.type === 'Signal' ? 'signal' : ''}">${item.type.toUpperCase()}</span>
+                    ${item.provider ? `<br/><span style="font-size:0.75em; color:#64748b;">via ${item.provider}</span>` : ''}
+                  </td>
+                  <td>${formatHistoryDetails(item)}</td>
+                  <td style="color: #64748b; font-size: 0.9em;">${item.timestamp}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          `}
         </div>
       </body>
     </html>
