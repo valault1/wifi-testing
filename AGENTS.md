@@ -18,6 +18,7 @@ This document serves as the primary source of truth for AI agents (and human con
 *(Agents: Add links to specific agent instruction files in subdirectories here as you create them)*
 - *(Example: `src/speedtest_center/backend/SERVER_AGENTS.md`)*
 - `website/FRONTEND_AGENTS.md`: Front-end design strategy, design tokens, and functional routing context for the landing pages.
+- `signalScape/AGENT.md`: The new flagship technician mobile app (replaces signal_tester). Details on Expo architecture, PDF generation, and custom TabBar.
 
 ## Current Project Needs & Principles
 - Maintain stability and ease of deployment for the remote testing servers.

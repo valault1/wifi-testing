@@ -1,14 +1,7 @@
 /**
- * Speedtest provider definitions.
- * Each provider has:
- *   - label:   Display name shown in Settings
- *   - url:     URL to load in the WebView (null for custom/inline HTML)
- *   - pollJs:  JS injected every 2s to detect completion and post result back
- *   - html:    (custom only) inline HTML string to use instead of a URL
+ * signalScape Speedtest provider definitions.
  */
 
-
-// --- Netflix Fast.com ---
 const FASTCOM_POLL_JS = `
 (function() {
   if (window.__fcRunning) return;
@@ -16,7 +9,6 @@ const FASTCOM_POLL_JS = `
   window.__fcLastMsg = '';
   window.__fcPeak = 0;
 
-  // Hide UI completely to optimize processor execution overhead
   var style = document.createElement('style');
   style.innerHTML = 'body { display: none !important; opacity: 0 !important; }';
   document.head.appendChild(style);
@@ -66,9 +58,6 @@ const FASTCOM_POLL_JS = `
 })();
 `;
 
-
-// --- Custom multi-CDN XHR engine ---
-// This runs entirely as inline HTML with no external page required.
 const CUSTOM_SPEEDTEST_HTML = `
 <!DOCTYPE html>
 <html>
@@ -109,8 +98,7 @@ const CUSTOM_SPEEDTEST_HTML = `
     }
     for (let i = 0; i < THREADS; i++) spawnThread();
 
-    let lastBytes = 0, lastT = performance.now(), peak = 0, recent = [];
-    const W = Math.round(1000 / INTERVAL);
+    let lastBytes = 0, lastT = performance.now(), peak = 0;
     setInterval(() => {
       const now = performance.now(), elapsed = now - t0;
       const mbps = (totalBytes - lastBytes) * 8 / ((now - lastT) * 1000);
@@ -126,11 +114,6 @@ const CUSTOM_SPEEDTEST_HTML = `
         if (mbps > peak) peak = mbps;
       }
 
-      // Update internal HTML for visual feedback if someone is looking at the webview
-      document.getElementById('speed').innerText = Math.round(mbps);
-      document.getElementById('label').innerText = statusMsg;
-
-      // Send progress to React Native
       window.ReactNativeWebView.postMessage(JSON.stringify({ 
         status: 'PROGRESS', 
         mbps: mbps > 0 ? mbps : 0, 
@@ -139,8 +122,6 @@ const CUSTOM_SPEEDTEST_HTML = `
 
       if (elapsed >= DURATION) {
         active = false;
-        document.getElementById('label').innerText = 'COMPLETE';
-        // The final result is the peak speed recorded
         window.ReactNativeWebView.postMessage(JSON.stringify({ status: 'FINISHED', mbps: peak }));
       }
     }, INTERVAL);
@@ -150,24 +131,18 @@ const CUSTOM_SPEEDTEST_HTML = `
 `;
 
 export const PROVIDERS = {
-  fastcom: {
-    id: 'fastcom',
+  'fast.com': {
+    id: 'fast.com',
     label: 'Fast.com',
-    subtitle: 'Netflix CDN — simple & reliable',
-    type: 'webview',
     url: 'https://fast.com',
     pollJs: FASTCOM_POLL_JS,
     html: null,
   },
-  custom: {
+  'custom': {
     id: 'custom',
     label: 'Custom Engine',
-    subtitle: 'Multi-CDN XHR — built-in, no browser',
-    type: 'webview',
     url: null,
     pollJs: null,
     html: CUSTOM_SPEEDTEST_HTML,
   },
 };
-
-export const DEFAULT_PROVIDER = 'fastcom';

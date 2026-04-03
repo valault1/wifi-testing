@@ -16,7 +16,6 @@ import * as Location from 'expo-location';
 import WifiManager from 'react-native-wifi-reborn';
 import { WebView } from 'react-native-webview';
 import { PROVIDERS } from '../speedtest/providers';
-import SpeedCheckerScreen from './SpeedCheckerScreen';
 
 export default function SignalScreen({ speedtestProviderKey, activeLocation, updateActiveLocation, locations, setActiveLocationId }) {
   const isSessionActive = !!activeLocation;
@@ -32,9 +31,8 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
   const [sessionModalVisible, setSessionModalVisible] = useState(false);
   const [activeRoomForTest, setActiveRoomForTest] = useState(null);
 
-  // New states for inline progress and active provider
+  // New states for inline progress
   const [testMode, setTestMode] = useState(null); // 'inline' | 'modal'
-  const [activeProviderKey, setActiveProviderKey] = useState('fastcom');
   const [testActive, setTestActive] = useState(false);
   const [currentSpeed, setCurrentSpeed] = useState(0);
   const [testPhase, setTestPhase] = useState(null); // 'DOWNLOAD', 'UPLOAD', or null
@@ -42,8 +40,7 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
   const webViewRef = useRef(null);
   const pollIntervalRef = useRef(null);
 
-  const provider = PROVIDERS[activeProviderKey];
-  const isNativeProvider = provider ? provider.type === 'native' : false;
+  const provider = PROVIDERS[speedtestProviderKey];
   const isCustomProvider = provider ? provider.id === 'custom' : false;
 
   useEffect(() => {
@@ -118,28 +115,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
     }
   }, [activeRoomForTest, stopPolling, provider]);
 
-  // Handler for SpeedChecker native result
-  const onNativeResult = useCallback(({ mbps, ping, upload }) => {
-    setLoading(false);
-    setTestActive(false);
-    setTestPhase(null);
-    setCurrentSpeed(0);
-
-    const parts = [`${mbps.toFixed(1)} Mbps`];
-    if (ping) parts.push(`Ping: ${ping.toFixed(0)} ms`);
-    if (upload) parts.push(`↑ ${upload.toFixed(1)} Mbps`);
-
-    const resultEntry = {
-      id: Date.now().toString(),
-      room: activeRoomForTest,
-      type: 'Speedtest',
-      speed: parts[0],
-      extras: parts.slice(1),
-      provider: provider?.label,
-      timestamp: new Date().toLocaleTimeString(),
-    };
-    updateActiveLocation({ history: [resultEntry, ...history] });
-  }, [activeRoomForTest, provider, history, updateActiveLocation]);
 
   const executeFastTest = (mode) => {
     if (mode === 'location' && !activeRoom) {
@@ -147,8 +122,6 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
       return;
     }
     setActiveRoomForTest(mode === 'quick' ? 'No Location' : activeRoom);
-    // User specifically wants to test fastcom or let them choose later, but this was hardcoded in user commit:
-    setActiveProviderKey('fastcom');
     setTestMode('inline');
     setLoading(true);
     setTestActive(true);
@@ -205,7 +178,7 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
   return (
     <View style={{ flex: 1, backgroundColor: '#F8F9FA' }}>
       {/* Background WebView for Speedtest (Invisible but actively rendering for requestAnimationFrame) */}
-      {testMode === 'inline' && testActive && !isNativeProvider && (
+      {testMode === 'inline' && testActive && (
         <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} pointerEvents="none">
           {isCustomProvider ? (
             <WebView
@@ -265,7 +238,7 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
             </Text>
           )}
 
-          {testMode === 'inline' && testActive && !isNativeProvider ? (
+          {testMode === 'inline' && testActive ? (
             <View style={styles.progressContainer}>
               <View style={styles.progressHeader}>
                 <Text style={styles.progressPhase}>{testPhase || 'TESTING...'}</Text>
@@ -325,12 +298,7 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
         {/* Speedtest Modal */}
         <Modal visible={testModalVisible} animationType="slide" onRequestClose={cancelSpeedtest}>
           <SafeAreaView style={styles.modalContainer}>
-            {isNativeProvider ? (
-              <SpeedCheckerScreen
-                onResult={onNativeResult}
-                onCancel={cancelSpeedtest}
-              />
-            ) : (
+            {provider && (
               <>
                 <View style={styles.modalHeader}>
                   <View>
@@ -341,7 +309,7 @@ export default function SignalScreen({ speedtestProviderKey, activeLocation, upd
                     <Text style={styles.modalCloseBtnText}>✕ Cancel</Text>
                   </TouchableOpacity>
                 </View>
-                {provider && testMode === 'modal' && (
+                {testMode === 'modal' && (
                   <WebView
                     ref={webViewRef}
                     source={{ uri: provider.url }}
