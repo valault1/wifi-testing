@@ -1,4 +1,4 @@
-import { ChevronRight, CheckCircle2, PhoneCall } from 'lucide-react';
+import { ChevronRight, PhoneCall } from 'lucide-react';
 
 interface Props {
     navigateTo: (view: string) => void;
@@ -11,110 +11,87 @@ export default function Home({ navigateTo }: Props) {
             <section className="hero" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
                 <div className="hero-bg-accent"></div>
                 <div className="hero-bg-accent-2"></div>
-                <div className="container hero-content">
+                <div className="container hero-split">
+                    <div className="hero-text-content">
+                        {/* <div className="hero-badge">Expert Installation & Support</div> */}
+                        <h1>
+                            Wifi Guys
+                        </h1>
+                        <p className="hero-description">
+                            Sit back, relax. We'll take care of your wifi for you.
+                        </p>
 
-                    <h1>
-                        Wifi Guys
-                    </h1>
-                    <p>
-                        <strong style={{ fontSize: '1.25rem', color: 'var(--text-main)' }}>Never think about your wifi again</strong><br /><br />
-                        We design, install, and manage flawless wireless networks so you can work, stream, and play without interruption. Say goodbye to dead zones and buffering.
-                    </p>
-                    <div className="hero-actions">
-                        <button className="btn btn-primary btn-glow" onClick={() => navigateTo('contact')}>
-                            Get in touch <ChevronRight size={18} />
-                        </button>
-                        <button className="btn btn-secondary" onClick={() => navigateTo('process')}>
-                            What to expect
-                        </button>
-                    </div>
-                    <div className="animate-fade-in delay-300" style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.95rem', fontWeight: 500 }}>
-                        <CheckCircle2 size={18} style={{ color: 'var(--primary)' }} />
-                        <span>Backed by over a decade of tech experience</span>
-                    </div>
-                </div>
-            </section>
-
-            {/* Pricing Section */}
-            <section id="pricing" className="features" style={{ background: 'var(--bg-color)', paddingTop: '4rem', paddingBottom: '3rem' }}>
-                <div className="container">
-                    <div className="section-header">
-                        <h2>Pricing</h2>
-                        <p>No hidden fees. Just clean, professional installation and perfect coverage.</p>
-                    </div>
-
-                    <div className="features-grid" style={{ alignItems: 'center', marginTop: '1rem', paddingTop: '1rem' }}>
-                        {/* Reliable Tier */}
-                        <div className="feature-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Reliable</h3>
-                                <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'flex-start', lineHeight: 1 }}>
-                                    <span style={{ fontSize: '1rem', marginTop: '0.5rem', marginRight: '0.5rem', color: 'var(--text-muted)' }}>From</span>
-                                    <span style={{ fontSize: '1.5rem', marginTop: '0.25rem', marginRight: '0.25rem' }}>$</span>650
-                                </div>
+                        <div className="hero-cta-box">
+                            <div className="contact-primary">
+                                <PhoneCall size={28} style={{ color: 'var(--primary)' }} />
+                                <a href="tel:9013086783" className="phone-number">(901) 308-6783</a>
                             </div>
-                            <p style={{ flexGrow: 1 }}>Perfect for everyday browsing, streaming, and smart home essentials with rock-solid stability.</p>
+                            <p className="contact-sub">Call or text us anytime for a free consultation.<br />Full network setup starting at just $99.</p>
+                            <button className="btn btn-primary btn-glow btn-lg" onClick={() => navigateTo('contact')}>
+                                Get in touch <ChevronRight size={18} />
+                            </button>
                         </div>
 
-                        {/* Futureproof Tier (Normal) */}
-                        <div className="feature-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Futureproof</h3>
-                                <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'flex-start', lineHeight: 1 }}>
-                                    <span style={{ fontSize: '1rem', marginTop: '0.5rem', marginRight: '0.5rem', color: 'var(--text-muted)' }}>From</span>
-                                    <span style={{ fontSize: '1.5rem', marginTop: '0.25rem', marginRight: '0.25rem' }}>$</span>1,100
-                                </div>
-                            </div>
-                            <p style={{ flexGrow: 1 }}>High-capacity networking designed to handle heavy 4K streaming, gaming, and working from home seamlessly.</p>
-                        </div>
+                        <div className="trust-badges">
+                            <span className="trust-text" style={{ textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>We set up wifi for all Memphis Internet providers</span>
 
-                        {/* Premium Tier */}
-                        <div className="feature-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Premium</h3>
-                                <div style={{ fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'flex-start', lineHeight: 1 }}>
-                                    <span style={{ fontSize: '1rem', marginTop: '0.5rem', marginRight: '0.5rem', color: 'var(--text-muted)' }}>From</span>
-                                    <span style={{ fontSize: '1.5rem', marginTop: '0.25rem', marginRight: '0.25rem' }}>$</span>2,200
-                                </div>
+                            <div className="feature-tags" style={{ marginTop: '0.5rem' }}>
+                                <span className="tag" style={{ background: 'white', border: '1px solid #e2e8f0', color: 'var(--text-main)', fontSize: '0.9rem' }}>Xfinity</span>
+                                <span className="tag" style={{ background: 'white', border: '1px solid #e2e8f0', color: 'var(--text-main)', fontSize: '0.9rem' }}>AT&T</span>
+                                <span className="tag" style={{ background: 'white', border: '1px solid #e2e8f0', color: 'var(--text-main)', fontSize: '0.9rem' }}>T-Mobile</span>
+                                <span className="tag" style={{ background: '#f8fafc', border: '1px dashed #cbd5e1', color: 'var(--text-muted)', fontSize: '0.9rem' }}>+ More</span>
                             </div>
-                            <p style={{ flexGrow: 1 }}>Ultimate performance for large estates. Enterprise-grade gear and zero dead zones.</p>
                         </div>
                     </div>
 
-                    {/* Pricing Disclaimer & Value Prop */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '4rem', marginBottom: '4rem' }}>
-                        <div style={{ background: 'var(--bg-surface)', padding: '2rem 3rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--primary)', maxWidth: '900px', width: '100%', boxShadow: '0 4px 20px -5px rgba(79, 70, 229, 0.15)' }}>
-                            <h3 style={{ color: 'var(--text-main)', fontSize: '1.25rem', marginBottom: '1.5rem', textAlign: 'center' }}>
-                                Always included with every installation
-                            </h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                                {[
-                                    'Premium Hardware',
-                                    'Professional Installation',
-                                    'Extensive Coverage Tests',
-                                    'Ongoing Support',
-                                    'Custom Consultation',
-                                    'Security Best Practices'
-                                ].map((item, idx) => (
-                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-main)', fontWeight: 500 }}>
-                                        <CheckCircle2 size={20} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                                        <span>{item}</span>
+                    <div className="hero-visual">
+                        <div className="glass-panel main-panel floating">
+                            <div className="panel-header">
+                                <div className="dot red"></div>
+                                <div className="dot yellow"></div>
+                                <div className="dot green"></div>
+                                <span className="panel-title">Network Optimization</span>
+                            </div>
+                            <div className="panel-body">
+                                <div className="speed-metrics">
+                                    <div className="metric">
+                                        <span className="metric-label">Download</span>
+                                        <span className="metric-value text-gradient">940 <span className="metric-unit">Mbps</span></span>
                                     </div>
-                                ))}
+                                    <div className="metric-divider"></div>
+                                    <div className="metric">
+                                        <span className="metric-label">Upload</span>
+                                        <span className="metric-value">820 <span className="metric-unit">Mbps</span></span>
+                                    </div>
+                                </div>
+                                <div className="network-nodes">
+                                    <svg style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1, top: 0, left: 0 }}>
+                                        <line x1="25%" y1="35%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" strokeDasharray="5,5" opacity="0.4" />
+                                        <line x1="80%" y1="70%" x2="50%" y2="50%" stroke="var(--primary)" strokeWidth="3" strokeDasharray="5,5" opacity="0.4" />
+                                    </svg>
+                                    <div className="node master pulsing" style={{ zIndex: 2 }}>
+                                        <span className="node-icon">Router</span>
+                                    </div>
+                                    <div className="node satellite-1" style={{ top: '15%', left: '10%', zIndex: 2 }}>
+                                        <span className="node-icon">Office</span>
+                                    </div>
+                                    <div className="node satellite-2" style={{ bottom: '15%', right: '10%', zIndex: 2 }}>
+                                        <span className="node-icon">Patio</span>
+                                    </div>
+                                </div>
+                                <div className="status-bar">
+                                    <div className="status-indicator online"></div>
+                                    <span>Status: Perfect Coverage</span>
+                                </div>
                             </div>
-                            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5, textAlign: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-                                <strong>Note:</strong> Pricing estimates are based on using 3 mesh routers, which usually cover a 2,500 sq. ft. home. Actual price may vary based on specific size, home materials, and layout.
-                            </p>
                         </div>
-                    </div>
 
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                        <button className="btn btn-primary btn-glow" style={{ fontSize: '1.125rem', padding: '1rem 2.5rem' }} onClick={() => navigateTo('contact')}>
-                            Get in touch <ChevronRight size={20} />
-                        </button>
+                        <div className="visual-ring ring-1"></div>
                     </div>
                 </div>
             </section>
+
+
 
             {/* Process Section Preview */}
             <section id="how-it-works" className="process">
@@ -152,14 +129,14 @@ export default function Home({ navigateTo }: Props) {
                                 <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'var(--secondary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '1.25rem', boxShadow: '0 0 0 4px white, 0 4px 10px rgba(0,0,0,0.1)', marginTop: '-3rem' }}>
                                     3
                                 </div>
-                                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Ongoing Support</h3>
-                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>Follow up check-in after the first week to ensure perfection, and 3-months of Q&amp;A support included.</p>
+                                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.75rem' }}>Support</h3>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', margin: 0 }}>Follow up check-in after the first week to ensure perfection, and a month of Q&amp;A support included.</p>
                             </div>
                         </div>
 
                         <div style={{ textAlign: 'center', marginTop: '3rem' }}>
                             <button className="btn btn-secondary" onClick={() => navigateTo('coverage')}>
-                                See an example coverage report <ChevronRight size={18} />
+                                See an example home coverage report <ChevronRight size={18} />
                             </button>
                         </div>
                     </div>

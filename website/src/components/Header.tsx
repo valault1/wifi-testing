@@ -6,7 +6,7 @@ interface HeaderProps {
     scrollToSection: (id: string, e?: React.MouseEvent) => void;
 }
 
-export default function Header({ currentView, navigateTo, scrollToSection }: HeaderProps) {
+export default function Header({ currentView, navigateTo }: HeaderProps) {
     const isStandalone = currentView !== 'home';
 
     if (isStandalone) {
@@ -19,8 +19,8 @@ export default function Header({ currentView, navigateTo, scrollToSection }: Hea
                     </a>
                     <nav className="nav-links">
                         <a href="#home" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('home'); }}>Home</a>
-                        <a href="#pricing" className="nav-link" onClick={(e) => scrollToSection('pricing', e)}>Pricing</a>
-                        <a href="#how-it-works" className="nav-link" onClick={(e) => scrollToSection('how-it-works', e)}>How it Works</a>
+
+                        <a href="#contact" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('contact'); }}>Contact us</a>
                         <a href="#faq" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('faq'); }}>FAQ</a>
                         <a href="#about" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('about'); }}>About us</a>
                     </nav>
@@ -41,8 +41,8 @@ export default function Header({ currentView, navigateTo, scrollToSection }: Hea
                 </a>
                 <nav className="nav-links">
                     <a href="#home" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('home'); }}>Home</a>
-                    <a href="#pricing" className="nav-link" onClick={(e) => scrollToSection('pricing', e)}>Pricing</a>
-                    <a href="#how-it-works" className="nav-link" onClick={(e) => scrollToSection('how-it-works', e)}>How it Works</a>
+
+                    <a href="#contact" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('contact'); }}>Contact us</a>
                     <a href="#faq" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('faq'); }}>FAQ</a>
                     <a href="#about" className="nav-link" onClick={(e) => { e.preventDefault(); navigateTo('about'); }}>About us</a>
                 </nav>

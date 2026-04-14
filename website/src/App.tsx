@@ -68,7 +68,7 @@ function App() {
 
       <Suspense fallback={<div style={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>Loading...</div>}>
         {currentView === 'home' && <Home navigateTo={navigateTo} />}
-        {currentView === 'contact' && <Contact navigateTo={navigateTo} />}
+        {currentView === 'contact' && <Contact />}
         {currentView === 'process' && <Process navigateTo={navigateTo} />}
         {currentView === 'coverage' && <Coverage navigateTo={navigateTo} />}
         {currentView === 'faq' && <Faq navigateTo={navigateTo} />}
